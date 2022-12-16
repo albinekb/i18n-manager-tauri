@@ -1,27 +1,55 @@
 import {
   Avatar,
   Badge,
+  Button,
   Chip,
+  CircularProgress,
   List,
   ListItem,
   ListItemButton,
+  ListItemIcon,
   Popover,
   Stack,
   Toolbar,
   Typography,
 } from '@mui/material'
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import { useFormContext, useFormState } from 'react-hook-form'
 import traverse from 'traverse'
-import { useProjectContext } from '../app/ProjectContext'
-
+import { selectKey, useProjectContext } from '../app/ProjectContext'
+import flatten from 'flat'
+import dotProp from 'dot-prop'
+import { writeFile } from '@tauri-apps/api/fs'
+import { join as pathJoin } from 'path'
+import useSaveProject from './hooks/useSaveProject'
+import { listen, TauriEvent } from '@tauri-apps/api/event'
+import { appWindow } from '@tauri-apps/api/window'
+import { confirm } from '@tauri-apps/api/dialog'
 type Props = {}
 
 export default function ProjectStatusBar({}: Props) {
   const projectContext = useProjectContext()
   const { isDirty } = useFormState()
-  const { formState } = useFormContext()
+  const { formState, getValues } = useFormContext()
+  const { saveProject, isSaving } = useSaveProject()
   const languages = projectContext.project.languages
+  useEffect(() => {
+    const listener = appWindow.onCloseRequested(async (event) => {
+      console.log(
+        `Got error in window ${event.windowLabel}, payload: ${event.payload}`,
+      )
+      if (!isDirty) return
+      const confirmed = await confirm('Are you sure?')
+      if (!confirmed) {
+        // user did not confirm closing the window; let's prevent it
+        event.preventDefault()
+      }
+    })
+
+    return () => {
+      listener.then((unlisten) => unlisten())
+    }
+  }, [isDirty])
 
   const [dirtyFields, dirtyKeys] = useMemo(
     () =>
@@ -59,6 +87,15 @@ export default function ProjectStatusBar({}: Props) {
         <Typography variant='subtitle2'>
           {isDirty ? 'dirty' : 'clean'}
         </Typography>
+        {isDirty && (
+          <Button
+            onClick={saveProject}
+            disabled={isSaving}
+            endIcon={isSaving && <CircularProgress size={16} />}
+          >
+            Save
+          </Button>
+        )}
         <Stack direction='row' gap={1}>
           <Chip
             avatar={
@@ -98,6 +135,7 @@ function DirtyList({
   setSelected: (selected: string) => void
 }) {
   const form = useFormContext()
+  const projectContext = useProjectContext()
   const [anchorEl, setAnchorEl] = React.useState<Element | null>(null)
   const handleOpen = useCallback((e) => setAnchorEl(e.currentTarget), [])
   const handleClose = useCallback(() => setAnchorEl(null), [])
@@ -128,7 +166,7 @@ function DirtyList({
           {fields.map((field) => (
             <ListItemButton
               onClick={() => {
-                setSelected(field)
+                selectKey(projectContext, field)
                 handleClose()
               }}
               key={field}

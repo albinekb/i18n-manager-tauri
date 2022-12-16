@@ -77,8 +77,13 @@ const RenderTreeForm = ({
       // }
       data-id={nodes.id}
       data-type={isParent ? 'parent' : 'value'}
-      endIcon={isParent && <ExpandMoreIcon />}
+      endIcon={isParent ? <ExpandMoreIcon /> : undefined}
       className={clsx(isSelected && 'bg-gray-100')}
+      classes={
+        isSelected
+          ? undefined
+          : { focused: 'bg-transparent', selected: 'bg-transparent' }
+      }
     >
       {Array.isArray(nodes.children)
         ? nodes.children.map((node) => (
@@ -192,36 +197,36 @@ export default function TreeNavigator({}: Props) {
       setMatches([])
     }
   }, [debouncedSearch, keysFlat])
-  console.log('selected', selected)
-  useEffect(() => {
-    if (selected) {
-      const nodes = selected.split('.')
-      if (!nodes?.length) {
-        return
-      }
-      if (expanded.includes(nodes.slice(0, -1).join('.'))) {
-        document
-          .querySelector(`[data-id="${selected}"]`)
 
-          ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-        return
-      }
-      if (nodes.length === 1) {
-        setExpanded((prev) => [...new Set([...prev, selected])])
-      } else {
-        const next = nodes.reduce((acc, curr) => {
-          if (acc.length) {
-            return [...acc, `${acc[acc.length - 1]}.${curr}`]
-          }
-          return [curr]
-        }, [])
-        setExpanded((prev) => [...new Set([...prev, ...next])])
-        document
-          .querySelector(`[data-id="${selected}"]`)
-          ?.scrollIntoView({ behavior: 'smooth' })
-      }
-    }
-  }, [selected])
+  // useEffect(() => {
+  //   if (selected) {
+  //     const nodes = selected.split('.')
+  //     if (!nodes?.length) {
+  //       return
+  //     }
+  //     if (expanded.includes(nodes.slice(0, -1).join('.'))) {
+  //       document
+  //         .querySelector(`[data-id="${selected}"]`)
+
+  //         ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  //       return
+  //     }
+  //     if (nodes.length === 1) {
+  //       setExpanded((prev) => [...new Set([...prev, selected])])
+  //     } else {
+  //       const next = nodes.reduce((acc, curr) => {
+  //         if (acc.length) {
+  //           return [...acc, `${acc[acc.length - 1]}.${curr}`]
+  //         }
+  //         return [curr]
+  //       }, [])
+  //       setExpanded((prev) => [...new Set([...prev, ...next])])
+  //       document
+  //         .querySelector(`[data-id="${selected}"]`)
+  //         ?.scrollIntoView({ behavior: 'smooth' })
+  //     }
+  //   }
+  // }, [selected])
 
   const searched = useMemo(() => {
     if (!debouncedSearch || !fuse || searchEmpty) return keyTree

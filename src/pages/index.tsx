@@ -4,6 +4,17 @@ import { open } from '@tauri-apps/api/dialog'
 
 import { readDir, BaseDirectory } from '@tauri-apps/api/fs'
 import { useRouter } from 'next/router'
+import {
+  Button,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  ListSubheader,
+  Stack,
+} from '@mui/material'
+import { ChevronRight } from '@mui/icons-material'
+import { join as pathJoin } from 'path'
 // import { WebviewWindow } from '@tauri-apps/api/window'
 
 function App() {
@@ -16,8 +27,8 @@ function App() {
     import('tauri-plugin-store-api')
       .then(({ Store }) => new Store('.settings.dat'))
       .then((store) =>
-        store.get('latest-pick').then((path: string) => {
-          if (path) setRecent([path])
+        store.get('recent').then((paths: string[]) => {
+          if (paths?.length) setRecent(paths)
         }),
       )
   }, [])
@@ -51,28 +62,56 @@ function App() {
     if (selected && !Array.isArray(selected)) {
       const dir = await readDir(selected)
       if (!dir.length || !dir.some((file) => file.name?.endsWith('.json'))) {
+        const files = (
+          await Promise.all(
+            dir.map((file, index) =>
+              readDir(file.path).then((files) =>
+                files.map((file) => ({
+                  ...file,
+                  lang: dir[index].name,
+                })),
+              ),
+            ),
+          )
+        )
+          .flatMap((found, index) => found)
+          .filter((dir) => dir.name.endsWith('.json'))
+
+        if (files.length) {
+          await store.set('recent', [...new Set([selected, ...recent])])
+          openPath(selected)
+          return
+        }
         alert('No JSON files found in this directory')
         return
       }
-      await store.set('latest-pick', selected)
+      await store.set('recent', [...new Set([selected, ...recent])])
       openPath(selected)
     }
   }
 
   return (
-    <div className='container'>
-      <h1>Welcome to Tauri!</h1>
-      <button onClick={openDirectory}>Open Directory</button>
+    <div className='flex flex-col w-full justify-center'>
+      <Stack alignItems='center' spacing={4}>
+        <h1>Welcome to Tauri!</h1>
+        <div>
+          <Button variant='outlined' onClick={openDirectory}>
+            Open Directory
+          </Button>
+        </div>
+      </Stack>
 
-      <p>Click on the Tauri, Next, and React logos to learn more.</p>
-
-      <div className='row'>
+      <List subheader={<ListSubheader>Recent</ListSubheader>}>
         {recent?.map((path) => (
-          <div key={path} onClick={() => openPath(path)}>
-            {path}
-          </div>
+          <ListItemButton key={path} onClick={() => openPath(path)}>
+            <ListItemText primary={path} />
+
+            <ListItemIcon>
+              <ChevronRight />
+            </ListItemIcon>
+          </ListItemButton>
         ))}
-      </div>
+      </List>
 
       <p>{greetMsg}</p>
     </div>

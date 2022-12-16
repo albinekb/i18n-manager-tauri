@@ -26,7 +26,7 @@ import {
   DeleteForever,
 } from '@mui/icons-material'
 import { useFormContext } from 'react-hook-form'
-import { expandKey, useProjectContext } from '../app/ProjectContext'
+import { selectKey, useProjectContext } from '../app/ProjectContext'
 
 const getData = (
   target,
@@ -61,6 +61,7 @@ export function ContextMenu({
   style?: React.CSSProperties
 }) {
   const projectContext = useProjectContext()
+  const formContext = useFormContext()
   const [dialog, setDialog] = React.useState<any>(null)
   const [contextMenu, setContextMenu] = React.useState<{
     mouseX: number
@@ -76,8 +77,7 @@ export function ContextMenu({
     }
     const data = getData(event.target as HTMLElement)
     if (!data) return
-    expandKey(projectContext.setExpanded, data.id)
-    projectContext.setSelected(data.id)
+    selectKey(projectContext, data.id)
     setContextMenu({
       mouseX: event.clientX + 2,
       mouseY: event.clientY - 6,
@@ -96,6 +96,17 @@ export function ContextMenu({
       data: contextMenu?.data,
       action: 'new',
     })
+  }
+
+  const handleDelete = () => {
+    formContext.setValue(contextMenu?.data?.id, undefined)
+    projectContext.setAdded((edits) =>
+      edits.includes(contextMenu?.data?.id)
+        ? edits.filter((edit) => edit !== contextMenu?.data?.id)
+        : [...edits, contextMenu?.data?.id],
+    )
+
+    handleClose()
   }
 
   return (
@@ -139,7 +150,7 @@ export function ContextMenu({
           </ListItemIcon>
           Cut
         </MenuItem>
-        <MenuItem onClick={handleClose}>
+        <MenuItem onClick={handleDelete}>
           <ListItemIcon>
             <DeleteForever fontSize='small' />
           </ListItemIcon>
@@ -168,12 +179,12 @@ function ContextDialog({ data, action, onClose }) {
         }, {}),
       )
       projectContext.setAdded((edits) => [...edits, name])
-      projectContext.setSelected(name)
+      selectKey(projectContext, name)
       onClose()
     } else {
       form.setValue(name, {})
       projectContext.setAdded((edits) => [...edits, name])
-      projectContext.setSelected(name)
+      selectKey(projectContext, name)
       onClose()
     }
   }

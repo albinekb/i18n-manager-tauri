@@ -25,19 +25,30 @@ type Props = {
   path: string
 }
 
-export const expandKey = (setExpanded, selected: string) => {
+const focusKey = (selected: string) => {
+  window.requestAnimationFrame(() => {
+    document
+      .querySelector(`[data-id="${selected}"]`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  })
+}
+
+export const selectKey = (
+  projectContext: TProjectContext,
+  selected: string,
+) => {
+  const { setSelected, setExpanded } = projectContext
+  setSelected(selected)
+  expandKey(setExpanded, selected, true)
+}
+
+const expandKey = (setExpanded, selected: string, focus = false) => {
   const nodes = selected.split('.')
   if (!nodes?.length) {
+    if (focus) focusKey(selected)
     return
   }
   setExpanded((expanded) => {
-    if (expanded.includes(nodes.slice(0, -1).join('.'))) {
-      document
-        .querySelector(`[data-id="${selected}"]`)
-
-        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      return expanded
-    }
     if (nodes.length === 1) {
       return [...new Set([...expanded, selected])]
     } else {
@@ -51,6 +62,7 @@ export const expandKey = (setExpanded, selected: string) => {
       return [...new Set([...expanded, ...next])]
     }
   })
+  if (focus) focusKey(selected)
 }
 
 export default function ProjectContextProvider({ children, path }: Props) {
