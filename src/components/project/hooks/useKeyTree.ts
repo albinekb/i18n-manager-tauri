@@ -4,11 +4,14 @@ import { useFormContext } from 'react-hook-form'
 import { useProjectContext } from '../../app/ProjectContext'
 import { Project } from './useProject'
 
+import sortOn from 'sort-on'
+
 export type KeyTree = {
   id: string
   name: string
   children?: KeyTree[]
   parent: string
+  score?: number
 }
 
 const createId = (root: string, key: string) => {
@@ -16,7 +19,7 @@ const createId = (root: string, key: string) => {
   return `${root}.${key}`
 }
 
-function findKeys(json, root, languages) {
+export function findKeys(json, root, languages) {
   const tree: KeyTree[] = []
 
   if (!json) return tree
@@ -31,14 +34,17 @@ function findKeys(json, root, languages) {
         parent: root,
       }))
     }
-    return json.map((item) => findKeys(item, root, languages))
+    return sortOn(
+      json.map((item) => findKeys(item, root, languages)),
+      ['name', 'score'],
+    )
   }
 
   const jsonKeys = Object.keys(json).filter((key) => key !== '__leaf')
 
   if (
-    jsonKeys.length === languages.length &&
-    jsonKeys.every((key) => languages.includes(key))
+    jsonKeys.length >= languages.length &&
+    languages.every((key) => jsonKeys.includes(key))
   ) {
     return undefined
   }
@@ -51,18 +57,27 @@ function findKeys(json, root, languages) {
       tree.push({ name: key, id, parent: root })
     }
     if (typeof value === 'object') {
+      const children = findKeys(value, id, languages)
+      const score = value.score
+        ? value.score
+        : children
+        ? children.reduce((acc, child) => acc + (child?.score || 0), 0) /
+          children.length
+        : undefined
+
       tree.push({
         name: key,
-        children: findKeys(value, id, languages),
+        children: children ? sortOn(children, ['name', 'score']) : children,
         id,
         parent: root,
+        score,
       })
     }
   }
-  return tree
+  return sortOn(tree, ['name', 'score'])
 }
 
-async function buildKeyTree(project: Project, values): Promise<KeyTree[]> {
+function buildKeyTree(project: Project, values): KeyTree[] {
   console.log('building key tree', project)
   const languages = project.languages
   return findKeys(values, '', languages)
@@ -83,7 +98,7 @@ export default function useKeyTree(project: Project) {
       ) {
         return
       }
-      const keyTree = await buildKeyTree(project, formContext.getValues())
+      const keyTree = buildKeyTree(project, formContext.getValues())
 
       setKeyTree(keyTree)
     }

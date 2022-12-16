@@ -3,7 +3,7 @@ import React, { memo, useEffect, useMemo } from 'react'
 import { TreeItem, TreeView } from '@mui/lab'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import useKeyTree, { KeyTree } from './hooks/useKeyTree'
+import useKeyTree, { findKeys, KeyTree } from './hooks/useKeyTree'
 import {
   CircularProgress,
   IconButton,
@@ -18,12 +18,13 @@ import flatten from 'flat'
 import MiniSearch from 'minisearch'
 import { Project } from './hooks/useProject'
 import { ContextMenu } from '../shared/ContextMenu'
-import { useProjectContext } from '../app/ProjectContext'
+import { expandKeys, useProjectContext } from '../app/ProjectContext'
 import { useController, useFormContext, useFormState } from 'react-hook-form'
 import dotProp from 'dot-prop'
 import { Clear, WarningOutlined } from '@mui/icons-material'
 import clsx from 'clsx'
-
+import traverse from 'traverse'
+import sortOn from 'sort-on'
 type Props = {}
 
 const RenderTreeForm = ({
@@ -55,6 +56,7 @@ const RenderTreeForm = ({
 
   const isParent = Array.isArray(nodes.children)
   const isSelected = selected === nodes.id
+  const isMatched = matches.includes(nodes.id)
 
   return (
     <TreeItem
@@ -66,7 +68,16 @@ const RenderTreeForm = ({
           alignItems='center'
           justifyContent='space-between'
         >
-          <span className={clsx(isDirty && 'font-semibold')}>{nodes.name}</span>
+          <span
+            className={clsx(isDirty && 'font-semibold')}
+            style={
+              nodes?.score
+                ? { backgroundColor: `rgba(0,255,0,${nodes.score / 100})` }
+                : undefined
+            }
+          >
+            {nodes.name}
+          </span>
           {isDirty && <WarningOutlined fontSize='small' />}
         </Stack>
       }
@@ -82,7 +93,11 @@ const RenderTreeForm = ({
       classes={
         isSelected
           ? undefined
-          : { focused: 'bg-transparent', selected: 'bg-transparent' }
+          : {
+              focused: 'bg-transparent',
+              selected: 'bg-transparent',
+              label: clsx(isMatched && 'bg-green-100'),
+            }
       }
     >
       {Array.isArray(nodes.children)
@@ -101,10 +116,60 @@ const RenderTreeForm = ({
     </TreeItem>
   )
 }
-const flatKeys = (tree: KeyTree[]) => {
-  return Object.entries(flatten(tree, { delimiter: '.' })).map(
-    ([id, value]) => ({ id, value, key: id?.split('.')?.slice(-1)[0] || id }),
-  )
+const flatKeys = (tree: KeyTree[], languages) => {
+  const regexps = languages.map((lang) => ({
+    lang,
+    regexp: new RegExp(`\.${lang}$`),
+  }))
+  const getKey = (key: string) => {
+    for (const { lang, regexp } of regexps) {
+      const ending = `.${lang}`
+      if (key.endsWith(ending)) {
+        return [key.replace(regexp, ''), lang]
+      }
+    }
+    return [key, null]
+  }
+
+  const json = traverse(tree).map(function (x) {
+    if (typeof x === 'object' && x.__leaf) {
+      this.update(x.en || x.sv)
+    }
+  })
+
+  const keysFlat = Object.entries(flatten(tree, { delimiter: '.' }))
+    .filter(
+      ([id, value]) => !id.includes('__leaf') && typeof value === 'string',
+    )
+    .map(([id, value]) => {
+      const [withoutLang, lang] = getKey(id)
+      return {
+        id,
+        value,
+        path: withoutLang,
+        key: withoutLang?.split('.')?.slice(-1)[0] || withoutLang,
+        lang,
+      }
+    })
+
+  const uniqueKeys = [...new Set(keysFlat.map((x) => x.path))]
+
+  return uniqueKeys.map((path) => {
+    const values = dotProp.get(tree, path)
+    const translated = languages.reduce((acc, lang) => {
+      const value = values?.[lang]
+      if (value) {
+        acc[lang] = value
+      }
+
+      return acc
+    }, {})
+    return {
+      id: path,
+      key: path.split('.').slice(-1)[0] || path,
+      ...translated,
+    }
+  })
 }
 
 export default function TreeNavigator({}: Props) {
@@ -114,10 +179,39 @@ export default function TreeNavigator({}: Props) {
 
   const [search, setSearch] = React.useState<string>('')
   const debouncedSearch = useDebounce(search, 500)
-  const json = project?.data?.[project?.files?.[0]]
-  const keysFlat = useMemo(() => json && flatKeys(json), [json])
+
+  const keysFlat = useMemo(
+    () =>
+      project.languageTree
+        ? flatKeys(project.languageTree, project.languages)
+        : [],
+    [project.languageTree],
+  )
+  console.log(keysFlat)
+
+  const miniSearch = useMemo(() => {
+    return new MiniSearch({
+      fields: ['key', ...project.languages],
+      storeFields: ['key', ...project.languages],
+      // processTerm: (term) => term.toLowerCase(), // index term processing
+      // tokenize: (string) => [string], // indexing tokenizer
+      // searchOptions: {
+      //   processTerm: (term) => term.toLowerCase(), // search query processing
+      // },
+      // searchOptions: {
+      //   tokenize: (string) => string.split(/\s/g),
+      //   // .split(/[\s-]+/) // search query tokenizer
+      // },
+    })
+  }, [project.languages])
+
+  useEffect(() => {
+    miniSearch.removeAll()
+    miniSearch.addAll(keysFlat)
+  }, [keysFlat, miniSearch])
+
   const [matches, setMatches] = React.useState<string[]>([])
-  // console.log('keysFlat', keysFlat)
+
   const searchEmpty = search === ''
   useEffect(() => {
     if (search === '' && expanded?.length && !selected) {
@@ -125,80 +219,67 @@ export default function TreeNavigator({}: Props) {
     }
   }, [searchEmpty])
 
-  const miniSearch = useMemo(() => {
-    if (!keysFlat?.length) return
-    let miniSearch = new MiniSearch({
-      fields: ['id', 'key'],
-      storeFields: ['id', 'key'],
-    })
+  // const fuse = useMemo(() => {
+  //   if (!keyTree?.length) return
+  //   const options: Fuse.IFuseOptions<KeyTree> = {
+  //     includeScore: true,
+  //     includeMatches: true,
+  //     findAllMatches: false,
+  //     shouldSort: true,
 
-    miniSearch.addAll(keysFlat)
+  //     keys: [
+  //       'name',
+  //       'children.name',
+  //       'children.children.name',
+  //       'children.children.children.name',
+  //       'children.children.children.children.name',
+  //       'children.children.children.children.children.name',
+  //       'children.children.children.children.children.children.name',
+  //     ],
+  //   }
 
-    return miniSearch
-  }, [keysFlat])
+  //   return new Fuse<KeyTree>(keyTree, options)
+  // }, [keyTree])
 
-  const fuse = useMemo(() => {
-    if (!keyTree?.length) return
-    const options: Fuse.IFuseOptions<KeyTree> = {
-      includeScore: true,
-      includeMatches: true,
-      findAllMatches: false,
-      shouldSort: true,
+  // useEffect(() => {
+  //   if (!debouncedSearch || !keysFlat?.length || !miniSearch) return
 
-      keys: [
-        'name',
-        'children.name',
-        'children.children.name',
-        'children.children.children.name',
-        'children.children.children.children.name',
-        'children.children.children.children.children.name',
-        'children.children.children.children.children.children.name',
-      ],
-    }
+  //   const results = miniSearch?.search(debouncedSearch, {
+  //     boost: { value: 3, key: 2 },
+  //   })
+  //   console.log('miniSearch results', results)
 
-    return new Fuse<KeyTree>(keyTree, options)
-  }, [keyTree])
+  //   if (results?.length) {
+  //     const top = results.slice(0, 50)
+  //     setMatches(top.map((result) => result.path).filter(Boolean))
+  //     const expanded: string[] = top.reduce((expanded, result) => {
+  //       const { path, score } = result
+  //       const parent = path.split('.').slice(0, -1)
+  //       if (parent?.length) {
+  //         if (parent.length === 1) {
+  //           return [...expanded, parent[0]]
+  //         }
+  //         const next = parent.reduce((acc, curr) => {
+  //           if (acc.length) {
+  //             return [...acc, `${acc[acc.length - 1]}.${curr}`]
+  //           }
+  //           return [curr]
+  //         }, [])
+  //         return [...expanded, ...next]
+  //       } else {
+  //         return [...expanded, path]
+  //       }
+  //     }, [] as string[])
 
-  useEffect(() => {
-    if (!debouncedSearch || !keysFlat?.length || !miniSearch) return
+  //     const unique = [...new Set(expanded)]
 
-    const results = miniSearch?.search(debouncedSearch)
-
-    if (results?.length) {
-      const top = results.slice(0, 5)
-      setMatches(
-        top
-          .map((result) => result.id?.split('.')?.slice(-1)[0])
-          .filter(Boolean),
-      )
-      const expanded: string[] = top.reduce((expanded, result) => {
-        const { id, score } = result
-        const parent = id.split('.').slice(0, -1)
-        if (parent?.length) {
-          if (parent.length === 1) {
-            return [...expanded, parent[0]]
-          }
-          const next = parent.reduce((acc, curr) => {
-            if (acc.length) {
-              return [...acc, `${acc[acc.length - 1]}.${curr}`]
-            }
-            return [curr]
-          }, [])
-          return [...expanded, ...next]
-        } else {
-          return [...expanded, id]
-        }
-      }, [] as string[])
-
-      const unique = [...new Set(expanded)]
-
-      if (unique?.length) {
-        setExpanded(unique)
-      }
-    } else {
-      setMatches([])
-    }
-  }, [debouncedSearch, keysFlat])
+  //     if (unique?.length) {
+  //       setExpanded(unique)
+  //     }
+  //   } else {
+  //     setMatches([])
+  //   }
+  // }, [debouncedSearch, keysFlat, miniSearch])
 
   // useEffect(() => {
   //   if (selected) {
@@ -231,13 +312,74 @@ export default function TreeNavigator({}: Props) {
   // }, [selected])
 
   const searched = useMemo(() => {
-    if (!debouncedSearch || !fuse || searchEmpty) return keyTree
-    const results = fuse.search(debouncedSearch)
+    if (!debouncedSearch || !miniSearch || searchEmpty) return keyTree
+    // console.log('json', miniSearch.toJSON())
+    const results = miniSearch.search(debouncedSearch, {
+      fuzzy: false,
+    })
 
-    return results
-      .filter((result) => result.score < 0.1)
-      .map((result) => result.item)
-  }, [keyTree, debouncedSearch, searchEmpty])
+    const obj = results.reduce((obj, curr) => {
+      for (const lang of project.languages) {
+        const id = `${curr.id}.${lang}`
+        obj[id] = curr[lang]
+      }
+      obj[`${curr.id}.score`] = curr.score
+
+      return obj
+    }, {})
+    const unflattened = flatten.unflatten(obj)
+    const tree = findKeys(unflattened, '', project.languages)
+
+    setExpanded(
+      expandKeys(
+        sortOn(results, '-score')
+          .slice(0, 10)
+          .map((result) => result.id),
+      ),
+    )
+
+    return sortOn(tree, '-score')
+
+    // const filteredTree = traverse(keyTree).map(function () {
+    //   // const key = this.key
+    //   const node = this.node
+    //   const thisPath = this.path
+    //   const thisKey = this.key
+    //   const thisLongPath = thisPath.join('.')
+    //   const isKeyTree = typeof node === 'object' && 'id' in node
+    //   const hasChildren =
+    //     isKeyTree && 'children' in node && node.children?.length
+    //   const isLeaf = isKeyTree && !hasChildren
+    //   const nodeId = isKeyTree ? node.id : thisKey
+    //   const parent = this.parent
+    //   const parentNode =
+    //     typeof parent === 'object' && 'id' in parent ? parent : null
+    //   const name = isKeyTree ? node.name : parentNode?.name
+    //   const keyMatch = isKeyTree && results.some(({ key }) => key === name)
+    //   if (!keyMatch) {
+    //     if (isKeyTree && results.every(({ id }) => !id.startsWith(nodeId))) {
+    //       this.remove()
+    //     } else if (name && !results.some(({ key }) => key === name)) {
+    //       console.log(name)
+    //       if (isLeaf) {
+    //         this.remove()
+    //       }
+    //     }
+    //   }
+    //   // if (!paths.some((path) => path.startsWith(node.id))) {
+
+    //   //   // this.remove()
+    //   // }
+    // })
+
+    // return filteredTree
+    // const results = fuse.search(debouncedSearch)
+    // console.log(results)
+
+    // return results
+    //   .filter((result) => result.score < 0.05)
+    //   .map((result) => result.item)
+  }, [keysFlat, keyTree, debouncedSearch, miniSearch, searchEmpty])
   // useEffect(() => {
   //   if (!results?.length) return
   //   const [first] = results

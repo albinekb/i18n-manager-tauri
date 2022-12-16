@@ -72,6 +72,7 @@ export default function useProject(projectPath: string): Project {
               lang: file.name.split('.')[0],
             })),
         )
+        return
       }
 
       const files = (

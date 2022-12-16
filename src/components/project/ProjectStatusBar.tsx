@@ -35,9 +35,7 @@ export default function ProjectStatusBar({}: Props) {
   const languages = projectContext.project.languages
   useEffect(() => {
     const listener = appWindow.onCloseRequested(async (event) => {
-      console.log(
-        `Got error in window ${event.windowLabel}, payload: ${event.payload}`,
-      )
+      console.log(`Got error in window ${event.windowLabel}`)
       if (!isDirty) return
       const confirmed = await confirm('Are you sure?')
       if (!confirmed) {

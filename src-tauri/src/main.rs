@@ -3,10 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use tauri::{
-    AboutMetadata, CustomMenuItem, EventLoopMessage, Manager, Menu, MenuItem, Submenu,
-    WindowMenuEvent, Wry,
-};
+use tauri::{AboutMetadata, CustomMenuItem, Manager, Menu, MenuItem, Submenu, WindowMenuEvent};
 use tauri_plugin_store::PluginBuilder;
 
 // the payload type must implement `Serialize` and `Clone`.
@@ -22,7 +19,10 @@ struct MenuPayload {
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
 fn allow_directory(app_handle: tauri::AppHandle, path: &str) -> String {
-    app_handle.fs_scope().allow_directory(path, true);
+    app_handle
+        .fs_scope()
+        .allow_directory(path, true)
+        .expect("Failed to allow directory");
     format!("Hello, {}! You've been greeted from Rust!", path)
 }
 

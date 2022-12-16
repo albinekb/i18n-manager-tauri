@@ -44,6 +44,28 @@ export const selectKey = (
   expandKey(setExpanded, selected, true)
 }
 
+export const expandKeys = (selected: string[]) => {
+  const expanded = []
+  for (const key of selected) {
+    const nodes = key.split('.')
+    if (!nodes?.length || nodes.length === 1) {
+      expanded.push(key)
+      continue
+    }
+
+    const next = nodes.reduce((acc, curr) => {
+      if (acc.length) {
+        return [...acc, `${acc[acc.length - 1]}.${curr}`]
+      }
+      return [curr]
+    }, [])
+
+    expanded.push(...next)
+  }
+
+  return expanded
+}
+
 const expandKey = (setExpanded, selected: string, focus = false) => {
   const nodes = selected.split('.')
   if (!nodes?.length) {
