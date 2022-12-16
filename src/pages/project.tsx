@@ -14,7 +14,7 @@ export default function Project() {
   return (
     <ProjectContextProvider path={path}>
       <div className='flex flex-col overflow-hidden w-full'>
-        <div className='flex flex-row overflow-hidden flex-1'>
+        <div className='flex flex-row overflow-hidden flex-1 w-full'>
           <TreeNavigator />
           <SelectedEditor />
         </div>

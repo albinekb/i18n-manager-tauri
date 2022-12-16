@@ -12,7 +12,9 @@ export type Project = {
 }
 
 function getValue(key: string, project: Project) {
-  const value = {}
+  const value = {
+    __leaf: true,
+  }
   for (const lang of project.languages) {
     value[lang] = dotProp.get(project.data[`${lang}.json`], key) || ''
   }

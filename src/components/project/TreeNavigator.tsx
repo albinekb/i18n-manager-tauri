@@ -9,6 +9,7 @@ import {
   IconButton,
   InputAdornment,
   LinearProgress,
+  Stack,
   TextField,
 } from '@mui/material'
 import Fuse from 'fuse.js'
@@ -20,7 +21,8 @@ import { ContextMenu } from '../shared/ContextMenu'
 import { useProjectContext } from '../app/ProjectContext'
 import { useController, useFormContext, useFormState } from 'react-hook-form'
 import dotProp from 'dot-prop'
-import { Clear } from '@mui/icons-material'
+import { Clear, WarningOutlined } from '@mui/icons-material'
+import clsx from 'clsx'
 
 type Props = {}
 
@@ -28,19 +30,18 @@ const RenderTreeForm = ({
   nodes,
   matches,
   expanded,
+  selected,
 }: {
   nodes: KeyTree
   matches: string[]
   expanded: string[]
+  selected: string
 }) => {
   const formStateDisabled =
     Array.isArray(nodes.children) ||
     !nodes.parent ||
     !expanded.includes(nodes.parent)
-  console.log({
-    name: nodes.id,
-    disabled: formStateDisabled,
-  })
+
   const { isDirty } = formStateDisabled
     ? { isDirty: false }
     : useFormContext().getFieldState(nodes.id)
@@ -51,19 +52,33 @@ const RenderTreeForm = ({
   // const isDirty = dotProp.get(dirtyFields, nodes.id, false)
 
   // console.log('dirtyFields', dirtyFields)
+
+  const isParent = Array.isArray(nodes.children)
+  const isSelected = selected === nodes.id
+
   return (
     <TreeItem
       key={nodes.id}
       nodeId={nodes.id}
-      label={nodes.name}
-      className={isDirty ? 'bg-red-100' : ''}
-      classes={
-        matches.includes(nodes.name)
-          ? { label: 'underline font-bold' }
-          : undefined
+      label={
+        <Stack
+          direction='row'
+          alignItems='center'
+          justifyContent='space-between'
+        >
+          <span className={clsx(isDirty && 'font-semibold')}>{nodes.name}</span>
+          {isDirty && <WarningOutlined fontSize='small' />}
+        </Stack>
       }
+      // classes={
+      //   matches.includes(nodes.name)
+      //     ? { label: 'underline font-bold' }
+      //     : undefined
+      // }
       data-id={nodes.id}
-      data-type={Array.isArray(nodes.children) ? 'parent' : 'value'}
+      data-type={isParent ? 'parent' : 'value'}
+      endIcon={isParent && <ExpandMoreIcon />}
+      className={clsx(isSelected && 'bg-gray-100')}
     >
       {Array.isArray(nodes.children)
         ? nodes.children.map((node) => (
@@ -72,6 +87,7 @@ const RenderTreeForm = ({
               nodes={node}
               matches={matches}
               expanded={expanded}
+              selected={selected}
             />
           ))
         : null}
@@ -79,16 +95,15 @@ const RenderTreeForm = ({
   )
 }
 const flatKeys = (tree: KeyTree[]) => {
-  console.log('flatkeys')
   return Object.entries(flatten(tree, { delimiter: '.' })).map(
     ([id, value]) => ({ id, value, key: id?.split('.')?.slice(-1)[0] || id }),
   )
 }
 
 export default function TreeNavigator({}: Props) {
-  const { project, setSelected } = useProjectContext()
+  const { project, setSelected, selected, expanded, setExpanded } =
+    useProjectContext()
   const keyTree = useKeyTree(project)
-  const [expanded, setExpanded] = React.useState<string[]>([])
 
   const [search, setSearch] = React.useState<string>('')
   const debouncedSearch = useDebounce(search, 500)
@@ -98,7 +113,7 @@ export default function TreeNavigator({}: Props) {
   // console.log('keysFlat', keysFlat)
   const searchEmpty = search === ''
   useEffect(() => {
-    if (search === '' && expanded?.length) {
+    if (search === '' && expanded?.length && !selected) {
       setExpanded([])
     }
   }, [searchEmpty])
@@ -172,18 +187,46 @@ export default function TreeNavigator({}: Props) {
 
       if (unique?.length) {
         setExpanded(unique)
-      } else {
-        setExpanded([])
       }
     } else {
       setMatches([])
     }
   }, [debouncedSearch, keysFlat])
+  console.log('selected', selected)
+  useEffect(() => {
+    if (selected) {
+      const nodes = selected.split('.')
+      if (!nodes?.length) {
+        return
+      }
+      if (expanded.includes(nodes.slice(0, -1).join('.'))) {
+        document
+          .querySelector(`[data-id="${selected}"]`)
+
+          ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        return
+      }
+      if (nodes.length === 1) {
+        setExpanded((prev) => [...new Set([...prev, selected])])
+      } else {
+        const next = nodes.reduce((acc, curr) => {
+          if (acc.length) {
+            return [...acc, `${acc[acc.length - 1]}.${curr}`]
+          }
+          return [curr]
+        }, [])
+        setExpanded((prev) => [...new Set([...prev, ...next])])
+        document
+          .querySelector(`[data-id="${selected}"]`)
+          ?.scrollIntoView({ behavior: 'smooth' })
+      }
+    }
+  }, [selected])
 
   const searched = useMemo(() => {
     if (!debouncedSearch || !fuse || searchEmpty) return keyTree
     const results = fuse.search(debouncedSearch)
-    console.log(results)
+
     return results
       .filter((result) => result.score < 0.1)
       .map((result) => result.item)
@@ -245,7 +288,16 @@ export default function TreeNavigator({}: Props) {
             aria-label='file system navigator'
             defaultCollapseIcon={<ExpandMoreIcon />}
             defaultExpandIcon={<ChevronRightIcon />}
-            onNodeSelect={(e, nodeId) => setSelected(nodeId)}
+            onNodeSelect={(e, nodeId) => {
+              const isLeaf = dotProp.get(
+                project.languageTree,
+                `${nodeId}.__leaf`,
+                false,
+              )
+              if (isLeaf) {
+                setSelected(nodeId)
+              }
+            }}
             onNodeToggle={(e, nodeId) => setExpanded(nodeId)}
             expanded={expanded}
             sx={{ flexGrow: 1, overflowY: 'auto' }}
@@ -254,6 +306,7 @@ export default function TreeNavigator({}: Props) {
               keyTree={searched}
               matches={matches}
               expanded={expanded}
+              selected={selected}
             />
           </TreeView>
         )}
@@ -266,10 +319,12 @@ const RenderTree = memo(function RenderTree({
   keyTree,
   matches,
   expanded,
+  selected,
 }: {
   keyTree: KeyTree[]
   matches: string[]
   expanded: string[]
+  selected: string
 }) {
   return (
     <>
@@ -279,6 +334,7 @@ const RenderTree = memo(function RenderTree({
           nodes={tree}
           matches={matches}
           expanded={expanded}
+          selected={selected}
         />
       )) || null}
     </>

@@ -13,8 +13,10 @@ import {
   FormLabel,
   ListItemIcon,
   ListSubheader,
+  Paper,
   Radio,
   RadioGroup,
+  Stack,
   TextField,
 } from '@mui/material'
 import {
@@ -23,6 +25,8 @@ import {
   ContentCut,
   DeleteForever,
 } from '@mui/icons-material'
+import { useFormContext } from 'react-hook-form'
+import { expandKey, useProjectContext } from '../app/ProjectContext'
 
 const getData = (
   target,
@@ -56,6 +60,7 @@ export function ContextMenu({
   className?: string
   style?: React.CSSProperties
 }) {
+  const projectContext = useProjectContext()
   const [dialog, setDialog] = React.useState<any>(null)
   const [contextMenu, setContextMenu] = React.useState<{
     mouseX: number
@@ -71,6 +76,8 @@ export function ContextMenu({
     }
     const data = getData(event.target as HTMLElement)
     if (!data) return
+    expandKey(projectContext.setExpanded, data.id)
+    projectContext.setSelected(data.id)
     setContextMenu({
       mouseX: event.clientX + 2,
       mouseY: event.clientY - 6,
@@ -84,11 +91,11 @@ export function ContextMenu({
 
   const handleNew = () => {
     console.log('new', contextMenu?.data)
+    handleClose()
     setDialog({
       data: contextMenu?.data,
       action: 'new',
     })
-    handleClose()
   }
 
   return (
@@ -145,38 +152,93 @@ export function ContextMenu({
 }
 
 function ContextDialog({ data, action, onClose }) {
-  const [type, setType] = React.useState('node')
+  const [type, setType] = React.useState('value')
   const [value, setValue] = React.useState('')
+  const form = useFormContext()
+  const projectContext = useProjectContext()
+
+  const submit = () => {
+    const name = `${data.id}.${value}`
+    if (type === 'value') {
+      form.setValue(
+        name,
+        projectContext.project.languages.reduce((acc, lang) => {
+          acc[lang] = ''
+          return acc
+        }, {}),
+      )
+      projectContext.setAdded((edits) => [...edits, name])
+      projectContext.setSelected(name)
+      onClose()
+    } else {
+      form.setValue(name, {})
+      projectContext.setAdded((edits) => [...edits, name])
+      projectContext.setSelected(name)
+      onClose()
+    }
+  }
+
   return (
-    <Dialog open={true}>
+    <Dialog
+      open={true}
+      onClose={onClose}
+      // disableAutoFocus
+      // disableEnforceFocus
+      disableRestoreFocus
+      PaperComponent={(props) => (
+        <Paper
+          component='form'
+          onSubmit={(event) => {
+            event.preventDefault()
+            submit()
+          }}
+          {...props}
+        />
+      )}
+    >
       <DialogTitle>{data?.key}</DialogTitle>
       <DialogContent>
         <div className='flex flex-col flex-1'>
           <FormControl>
-            <FormLabel id='demo-controlled-radio-buttons-group'>
-              Gender
-            </FormLabel>
+            <FormLabel>Type</FormLabel>
             <RadioGroup
-              aria-labelledby='demo-controlled-radio-buttons-group'
-              name='controlled-radio-buttons-group'
               value={type}
               onChange={(e) => {
                 setType(e.target.value)
               }}
             >
-              <FormControlLabel
-                value='value'
-                control={<Radio />}
-                label='value'
-              />
-              <FormControlLabel value='node' control={<Radio />} label='node' />
+              <Stack direction='row'>
+                <FormControlLabel
+                  value='value'
+                  control={<Radio />}
+                  label='value'
+                />
+                <FormControlLabel
+                  value='node'
+                  control={<Radio />}
+                  label='node'
+                />
+              </Stack>
             </RadioGroup>
           </FormControl>
-          <TextField value={value} onChange={(e) => setValue(e.target.value)} />
+          <TextField
+            label='key'
+            autoFocus
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            autoComplete='off'
+            autoCapitalize='off'
+            autoCorrect='off'
+          />
         </div>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button disabled={!value} type='submit'>
+          Create
+        </Button>
+        <Button onClick={onClose} color='secondary'>
+          Cancel
+        </Button>
       </DialogActions>
     </Dialog>
   )
