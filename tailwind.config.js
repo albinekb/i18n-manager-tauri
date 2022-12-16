@@ -10,5 +10,9 @@ module.exports = {
     extend: {},
   },
   plugins: [],
-  important: true,
+  corePlugins: {
+    preflight: false,
+  },
+  important: '#__next',
+  // important: true,
 }

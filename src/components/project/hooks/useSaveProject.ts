@@ -47,6 +47,8 @@ export default function useSaveProject() {
       if (!uniqueKeys.includes(projectContext.selected)) {
         projectContext.setSelected(null)
       }
+      projectContext.setDeleted([])
+      projectContext.setAdded([])
     } catch (error) {
       console.error(error)
     } finally {

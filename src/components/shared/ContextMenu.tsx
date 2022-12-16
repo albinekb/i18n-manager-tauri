@@ -99,12 +99,13 @@ export function ContextMenu({
   }
 
   const handleDelete = () => {
-    formContext.setValue(contextMenu?.data?.id, undefined)
-    projectContext.setAdded((edits) =>
-      edits.includes(contextMenu?.data?.id)
-        ? edits.filter((edit) => edit !== contextMenu?.data?.id)
-        : [...edits, contextMenu?.data?.id],
-    )
+    formContext.resetField(contextMenu?.data?.id, {
+      defaultValue: undefined,
+    })
+    formContext.setValue(contextMenu?.data?.id, undefined, {
+      shouldDirty: true,
+    })
+    projectContext.setDeleted((edits) => [...edits, contextMenu?.data?.id])
 
     handleClose()
   }

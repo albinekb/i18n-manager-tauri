@@ -86,15 +86,17 @@ const RenderTreeForm = ({
       }
     >
       {Array.isArray(nodes.children)
-        ? nodes.children.map((node) => (
-            <RenderTreeForm
-              key={node.id}
-              nodes={node}
-              matches={matches}
-              expanded={expanded}
-              selected={selected}
-            />
-          ))
+        ? nodes.children.map((node) =>
+            node ? (
+              <RenderTreeForm
+                key={node.id}
+                nodes={node}
+                matches={matches}
+                expanded={expanded}
+                selected={selected}
+              />
+            ) : null,
+          )
         : null}
     </TreeItem>
   )

@@ -19,7 +19,12 @@ type Props = {}
 export default function SelectedEditor({}: Props) {
   const { project, setSelected, selected } = useProjectContext()
   const formContext = useFormContext()
+  const isNode = selected && formContext.getValues(selected)
+  console.log(isNode)
   if (!selected) return null
+  if (!isNode) {
+    return <div>'woop'</div>
+  }
   return (
     <Stack className='flex-1 px-4' spacing={2}>
       <Typography variant='h5'>{selected}</Typography>

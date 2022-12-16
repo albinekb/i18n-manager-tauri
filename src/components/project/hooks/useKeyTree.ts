@@ -88,7 +88,7 @@ export default function useKeyTree(project: Project) {
       setKeyTree(keyTree)
     }
     init()
-  }, [project, projectContext.added])
+  }, [project.data, projectContext.added, projectContext.deleted])
 
   return keyTree
 }

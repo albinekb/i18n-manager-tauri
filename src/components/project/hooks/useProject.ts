@@ -1,6 +1,6 @@
 import { readDir, readTextFile } from '@tauri-apps/api/fs'
 import React, { useEffect, useMemo } from 'react'
-import { join as pathJoin } from 'path'
+
 import flatten from 'flat'
 import dotProp from 'dot-prop'
 export type Project = {
@@ -18,6 +18,21 @@ function getValue(key: string, project: Partial<Project>) {
   }
   for (const lang of project.languages) {
     value[lang] = dotProp.get(project.data[lang], key) || ''
+  }
+  if (key.includes('index')) {
+    console.log('i', dotProp.get(project.data['en'], key))
+  }
+  if (
+    project.languages.every((lang) => {
+      const value = dotProp.get(project.data[lang], key)
+      if (
+        value === undefined ||
+        (typeof value === 'object' && Object.keys(value).length === 0)
+      )
+        return true
+    })
+  ) {
+    return {}
   }
   return value
 }

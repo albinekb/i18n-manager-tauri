@@ -15,6 +15,8 @@ type TProjectContext = {
   setSelected: (selected: string | null) => void
   setAdded: Dispatch<SetStateAction<string[]>>
   added: string[]
+  setDeleted: Dispatch<SetStateAction<string[]>>
+  deleted: string[]
   expanded: string[]
   setExpanded: Dispatch<SetStateAction<string[]>>
 }
@@ -71,6 +73,7 @@ export default function ProjectContextProvider({ children, path }: Props) {
   const [selected, setSelected] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string[]>([])
   const [added, setAdded] = useState<string[]>([])
+  const [deleted, setDeleted] = useState<string[]>([])
   useEffect(() => {
     if (typeof window === 'undefined') return
     import('@tauri-apps/api/window').then(({ appWindow }) => {
@@ -87,8 +90,20 @@ export default function ProjectContextProvider({ children, path }: Props) {
       setAdded,
       expanded,
       setExpanded,
+      deleted,
+      setDeleted,
     }),
-    [project, selected, setSelected, added, setAdded, expanded, setExpanded],
+    [
+      project,
+      selected,
+      setSelected,
+      added,
+      setAdded,
+      expanded,
+      setExpanded,
+      deleted,
+      setDeleted,
+    ],
   )
   if (!project) return null
 
