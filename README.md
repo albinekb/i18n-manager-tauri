@@ -1,6 +1,9 @@
-# Tauri + Next.js + Typescript
+# i18n manager rewritten in React+Tauri
 
-This template should help get you started developing with Tauri, Next.js and Typescript.
+## How to run
+
+- `yarn install`
+- `yarn dev`
 
 ## Recommended IDE Setup
 
