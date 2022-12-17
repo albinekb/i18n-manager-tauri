@@ -37,12 +37,10 @@ type Props = {}
 
 const RenderTreeForm = ({
   nodes,
-  matches,
   expanded,
   selected,
 }: {
   nodes: KeyTree
-  matches: string[]
   expanded: string[]
   selected: string
 }) => {
@@ -64,7 +62,6 @@ const RenderTreeForm = ({
 
   const isParent = Array.isArray(nodes.children)
   const isSelected = selected === nodes.id
-  const isMatched = matches.includes(nodes.id)
   const count = isParent ? nodes.children.length : null
 
   return (
@@ -110,7 +107,6 @@ const RenderTreeForm = ({
           : {
               focused: 'bg-transparent',
               selected: 'bg-transparent',
-              label: clsx(isMatched && 'bg-green-100'),
               expanded: 'font-extralight',
               iconContainer: 'text-2xl',
             }
@@ -122,7 +118,6 @@ const RenderTreeForm = ({
               <RenderTreeForm
                 key={node.id}
                 nodes={node}
-                matches={matches}
                 expanded={expanded}
                 selected={selected}
               />
@@ -224,8 +219,6 @@ export default function TreeNavigator({}: Props) {
     miniSearch.removeAll()
     miniSearch.addAll(keysFlat)
   }, [keysFlat, miniSearch])
-
-  const [matches, setMatches] = React.useState<string[]>([])
 
   const searchEmpty = searchString === ''
   useEffect(() => {
@@ -451,7 +444,6 @@ export default function TreeNavigator({}: Props) {
           >
             <RenderTree
               keyTree={searched}
-              matches={matches}
               expanded={expanded}
               selected={selected}
             />
@@ -464,12 +456,10 @@ export default function TreeNavigator({}: Props) {
 
 const RenderTree = memo(function RenderTree({
   keyTree,
-  matches,
   expanded,
   selected,
 }: {
   keyTree: KeyTree[]
-  matches: string[]
   expanded: string[]
   selected: string
 }) {
@@ -479,7 +469,6 @@ const RenderTree = memo(function RenderTree({
         <RenderTreeForm
           key={tree.id}
           nodes={tree}
-          matches={matches}
           expanded={expanded}
           selected={selected}
         />

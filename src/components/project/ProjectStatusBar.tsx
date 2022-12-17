@@ -218,18 +218,21 @@ function DirtyList({
         }}
       >
         <List>
-          {fields.map((field) => (
-            <ListItemButton
-              onClick={() => {
-                const key = getKey ? getKey(field) : field
-                selectKey(projectContext, key)
-                handleClose()
-              }}
-              key={field}
-            >
-              {field}
-            </ListItemButton>
-          ))}
+          {fields.map((field) => {
+            const key = getKey ? getKey(field) : field
+            return (
+              <ListItemButton
+                selected={projectContext.selected === key}
+                onClick={() => {
+                  selectKey(projectContext, key)
+                  handleClose()
+                }}
+                key={field}
+              >
+                {field}
+              </ListItemButton>
+            )
+          })}
         </List>
       </Popover>
       <Chip
