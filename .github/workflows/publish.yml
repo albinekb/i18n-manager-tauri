@@ -25,6 +25,7 @@ jobs:
       - name: Install app dependencies
         run: yarn
       - uses: tauri-apps/tauri-action@v0
+        id: tauri-action
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -33,3 +34,4 @@ jobs:
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           prerelease: false
+      - run: echo "[View release](${{ steps.tauri-action.outputs.releaseHtmlUrl }})" >> $GITHUB_STEP_SUMMARY
