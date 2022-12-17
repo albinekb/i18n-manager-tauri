@@ -1,0 +1,34 @@
+name: 'Tauri cache'
+description: 'Setup yarn & cargo cache'
+runs:
+  using: "composite"
+  steps: 
+    - name: Get yarn cache directory path
+      id: yarn-cache-dir-path
+      shell: bash
+      run: echo "YARN_CACHE_DIR=dir::$(yarn cache dir)" >> $GITHUB_STATE
+    - name: Set up yarn cache
+      uses: actions/cache@v3
+      id: yarn-cache
+      with:
+        path: |
+          ${{ env.YARN_CACHE_DIR }}
+          ${{ github.workspace }}/.next/cache
+        # Generate a new cache whenever packages or source files change.
+        key: ${{ runner.os }}-nextjs-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+        # If source files changed but packages didn't, rebuild from a prior cache.
+        restore-keys: |
+          ${{ runner.os }}-nextjs-${{ hashFiles('**/yarn.lock') }}-
+    - name: Set up cargo cache
+      id: cargo-cache
+      uses: actions/cache@v3
+      continue-on-error: false
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          src-tauri/target/            
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-cargo-
