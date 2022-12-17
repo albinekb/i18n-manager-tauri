@@ -90,7 +90,7 @@ const LangEditor = ({ lang, selected, project }) => {
         // helperText={fieldState.isDirty ? 'dirty' : ''}
         color={fieldState.isDirty ? 'warning' : 'primary'}
         fullWidth
-        focused
+        focused={fieldState.isDirty ? true : undefined}
         InputProps={{
           endAdornment: (
             <InputAdornment
