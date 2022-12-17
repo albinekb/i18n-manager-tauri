@@ -8,6 +8,7 @@ import React, {
 } from 'react'
 import useProject, { Project } from '../project/hooks/useProject'
 import { FormProvider, useForm } from 'react-hook-form'
+import { useDebounce } from 'usehooks-ts'
 
 type TProjectContext = {
   project: Project
@@ -19,6 +20,9 @@ type TProjectContext = {
   deleted: string[]
   expanded: string[]
   setExpanded: Dispatch<SetStateAction<string[]>>
+  searchString: string
+  setSearchString: Dispatch<SetStateAction<string>>
+  debouncedSearchString: string
 }
 const ProjectContext = React.createContext<TProjectContext>(null)
 
@@ -96,6 +100,8 @@ export default function ProjectContextProvider({ children, path }: Props) {
   const [expanded, setExpanded] = useState<string[]>([])
   const [added, setAdded] = useState<string[]>([])
   const [deleted, setDeleted] = useState<string[]>([])
+  const [searchString, setSearchString] = useState<string>('')
+  const debouncedSearchString = useDebounce(searchString, 500)
   useEffect(() => {
     if (typeof window === 'undefined') return
     import('@tauri-apps/api/window').then(({ appWindow }) => {
@@ -114,6 +120,9 @@ export default function ProjectContextProvider({ children, path }: Props) {
       setExpanded,
       deleted,
       setDeleted,
+      searchString,
+      setSearchString,
+      debouncedSearchString,
     }),
     [
       project,
@@ -125,6 +134,9 @@ export default function ProjectContextProvider({ children, path }: Props) {
       setExpanded,
       deleted,
       setDeleted,
+      searchString,
+      setSearchString,
+      debouncedSearchString,
     ],
   )
   if (!project) return null

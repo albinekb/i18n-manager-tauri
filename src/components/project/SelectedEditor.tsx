@@ -17,10 +17,17 @@ import clsx from 'clsx'
 type Props = {}
 
 export default function SelectedEditor({}: Props) {
-  const { project, setSelected, selected } = useProjectContext()
+  const {
+    project,
+    setSelected,
+    selected,
+    searchString,
+    debouncedSearchString,
+  } = useProjectContext()
+  const isSearching = searchString && searchString !== debouncedSearchString
   const formContext = useFormContext()
   const isNode = selected && formContext.getValues(selected)
-  console.log(isNode)
+  if (isSearching) return null
   if (!selected) return null
   if (!isNode) {
     return <div>'woop'</div>

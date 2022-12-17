@@ -199,11 +199,15 @@ function ContextDialog({ data, action, onClose }) {
       disableRestoreFocus
       PaperComponent={(props) => (
         <Paper
-          component='form'
-          onSubmit={(event) => {
-            event.preventDefault()
-            submit()
-          }}
+          component={(props) => (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                submit()
+              }}
+              {...props}
+            />
+          )}
           {...props}
         />
       )}

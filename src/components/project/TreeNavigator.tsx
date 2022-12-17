@@ -5,6 +5,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import useKeyTree, { findKeys, KeyTree } from './hooks/useKeyTree'
 import {
+  Badge,
   CircularProgress,
   IconButton,
   InputAdornment,
@@ -57,6 +58,7 @@ const RenderTreeForm = ({
   const isParent = Array.isArray(nodes.children)
   const isSelected = selected === nodes.id
   const isMatched = matches.includes(nodes.id)
+  const count = isParent ? nodes.children.length : null
 
   return (
     <TreeItem
@@ -67,9 +69,13 @@ const RenderTreeForm = ({
           direction='row'
           alignItems='center'
           justifyContent='space-between'
+          className='h-10'
         >
           <span
-            className={clsx(isDirty && 'font-semibold')}
+            className={clsx(
+              isDirty && 'font-semibold',
+              'font-weight-[inherit]',
+            )}
             style={
               nodes?.score
                 ? { backgroundColor: `rgba(0,255,0,${nodes.score / 100})` }
@@ -78,6 +84,16 @@ const RenderTreeForm = ({
           >
             {nodes.name}
           </span>
+          {count && (
+            <Badge
+              badgeContent={count}
+              color='primary'
+              anchorOrigin={{
+                vertical: 'top',
+                horizontal: 'left',
+              }}
+            />
+          )}
           {isDirty && <WarningOutlined fontSize='small' />}
         </Stack>
       }
@@ -89,14 +105,16 @@ const RenderTreeForm = ({
       data-id={nodes.id}
       data-type={isParent ? 'parent' : 'value'}
       endIcon={isParent ? <ExpandMoreIcon /> : undefined}
-      className={clsx(isSelected && 'bg-gray-100')}
+      // className={clsx(isSelected && 'bg-gray-100')}
       classes={
         isSelected
-          ? undefined
+          ? { expanded: 'font-extralight', iconContainer: 'text-2xl' }
           : {
               focused: 'bg-transparent',
               selected: 'bg-transparent',
               label: clsx(isMatched && 'bg-green-100'),
+              expanded: 'font-extralight',
+              iconContainer: 'text-2xl',
             }
       }
     >
@@ -173,12 +191,17 @@ const flatKeys = (tree: KeyTree[], languages) => {
 }
 
 export default function TreeNavigator({}: Props) {
-  const { project, setSelected, selected, expanded, setExpanded } =
-    useProjectContext()
+  const {
+    project,
+    setSelected,
+    selected,
+    expanded,
+    setExpanded,
+    searchString,
+    setSearchString,
+    debouncedSearchString,
+  } = useProjectContext()
   const keyTree = useKeyTree(project)
-
-  const [search, setSearch] = React.useState<string>('')
-  const debouncedSearch = useDebounce(search, 500)
 
   const keysFlat = useMemo(
     () =>
@@ -212,9 +235,9 @@ export default function TreeNavigator({}: Props) {
 
   const [matches, setMatches] = React.useState<string[]>([])
 
-  const searchEmpty = search === ''
+  const searchEmpty = searchString === ''
   useEffect(() => {
-    if (search === '' && expanded?.length && !selected) {
+    if (searchString === '' && expanded?.length && !selected) {
       setExpanded([])
     }
   }, [searchEmpty])
@@ -311,12 +334,25 @@ export default function TreeNavigator({}: Props) {
   //   }
   // }, [selected])
 
-  const searched = useMemo(() => {
-    if (!debouncedSearch || !miniSearch || searchEmpty) return keyTree
-    // console.log('json', miniSearch.toJSON())
-    const results = miniSearch.search(debouncedSearch, {
+  const results = useMemo(() => {
+    if (!debouncedSearchString || !miniSearch || searchEmpty) return null
+    return miniSearch.search(debouncedSearchString, {
       fuzzy: false,
     })
+  }, [miniSearch, debouncedSearchString])
+
+  useEffect(() => {
+    if (results?.length) {
+      const [first] = results
+      setSelected(first.id)
+      setExpanded(expandKeys(results.slice(0, 10).map((result) => result.id)))
+    }
+  }, [results])
+
+  const searched = useMemo(() => {
+    if (!debouncedSearchString || !miniSearch || searchEmpty) return keyTree
+
+    // console.log('json', miniSearch.toJSON())
 
     const obj = results.reduce((obj, curr) => {
       for (const lang of project.languages) {
@@ -330,15 +366,7 @@ export default function TreeNavigator({}: Props) {
     const unflattened = flatten.unflatten(obj)
     const tree = findKeys(unflattened, '', project.languages)
 
-    setExpanded(
-      expandKeys(
-        sortOn(results, '-score')
-          .slice(0, 10)
-          .map((result) => result.id),
-      ),
-    )
-
-    return sortOn(tree, '-score')
+    return tree
 
     // const filteredTree = traverse(keyTree).map(function () {
     //   // const key = this.key
@@ -373,13 +401,13 @@ export default function TreeNavigator({}: Props) {
     // })
 
     // return filteredTree
-    // const results = fuse.search(debouncedSearch)
+    // const results = fuse.search(debouncedSearchString)
     // console.log(results)
 
     // return results
     //   .filter((result) => result.score < 0.05)
     //   .map((result) => result.item)
-  }, [keysFlat, keyTree, debouncedSearch, miniSearch, searchEmpty])
+  }, [keysFlat, keyTree, results, miniSearch])
   // useEffect(() => {
   //   if (!results?.length) return
   //   const [first] = results
@@ -402,15 +430,15 @@ export default function TreeNavigator({}: Props) {
   //   }
   // }, [results])
 
-  const isSearching = search && search !== debouncedSearch
+  const isSearching = searchString && searchString !== debouncedSearchString
 
   return (
     <div className='flex flex-col w-80 overflow-hidden'>
       <div className='p-4'>
         <TextField
           label='Search'
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchString}
+          onChange={(e) => setSearchString(e.target.value)}
           size='small'
           inputProps={{
             autoComplete: 'off',
@@ -420,8 +448,11 @@ export default function TreeNavigator({}: Props) {
           fullWidth
           InputProps={{
             endAdornment: (
-              <InputAdornment position='end' className={search ? '' : 'hidden'}>
-                <IconButton size='small' onClick={() => setSearch('')}>
+              <InputAdornment
+                position='end'
+                className={searchString ? '' : 'hidden'}
+              >
+                <IconButton size='small' onClick={() => setSearchString('')}>
                   <Clear fontSize='small' />
                 </IconButton>
               </InputAdornment>

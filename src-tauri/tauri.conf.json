@@ -1,7 +1,7 @@
 {
   "build": {
     "beforeDevCommand": "yarn next:dev",
-    "beforeBuildCommand": "yarn build",
+    "beforeBuildCommand": "yarn next:build",
     "devPath": "http://localhost:1420",
     "distDir": "../dist",
     "withGlobalTauri": false
@@ -57,7 +57,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.tauri.dev",
+      "identifier": "com.i18n-manager.dev",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
