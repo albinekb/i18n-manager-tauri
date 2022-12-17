@@ -1,4 +1,4 @@
-name: 'Tauri cache'
+name: 'Setup cache'
 description: 'Setup yarn & cargo cache'
 runs:
   using: "composite"
