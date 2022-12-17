@@ -23,6 +23,7 @@ export default function Project() {
       <div className='flex flex-col overflow-hidden w-full'>
         <div className='flex flex-row overflow-hidden flex-1 w-full'>
           <TreeNavigator />
+
           <SelectedEditor />
         </div>
 

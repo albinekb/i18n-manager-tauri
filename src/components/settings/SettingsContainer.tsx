@@ -6,7 +6,7 @@ type Props = {}
 
 type SettingsStore = any
 
-const TRANSLATE_API_KEY = 'translateApiKey'
+export const TRANSLATE_API_KEY = 'translateApiKey'
 
 export default function SettingsContainer({}: Props) {
   const [settings, setSettings] = React.useState<SettingsStore>(null)

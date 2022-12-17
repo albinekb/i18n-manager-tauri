@@ -19,6 +19,7 @@
     "@mui/material": "^5.11.0",
     "@next/font": "^13.0.7",
     "@tauri-apps/api": "^1.2.0",
+    "axios": "^1.2.1",
     "clsx": "^1.2.1",
     "dot-prop": "6",
     "flat": "^5.0.2",

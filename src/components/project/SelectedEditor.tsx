@@ -13,6 +13,7 @@ import { useProjectContext } from '../app/ProjectContext'
 import { useFormContext, useController } from 'react-hook-form'
 import { ClearOutlined } from '@mui/icons-material'
 import clsx from 'clsx'
+import TranslateSection from '../Translate/TranslateSection'
 
 type Props = {}
 
@@ -35,13 +36,15 @@ export default function SelectedEditor({}: Props) {
   return (
     <Stack className='flex-1 px-4' spacing={2}>
       <Typography variant='h5'>{selected}</Typography>
+      <TranslateSection />
       {project.languages.map((lang) => {
         const value = dotProp.get(project.languageTree, `${selected}.${lang}`)
         if (
           (typeof value === 'object' || value === undefined) &&
           typeof formContext.getValues(`${selected}.${lang}`) !== 'string'
-        )
+        ) {
           return selected
+        }
         return (
           <LangEditor
             key={`${lang}-${selected}`}
@@ -85,8 +88,9 @@ const LangEditor = ({ lang, selected, project }) => {
         {...field}
         label={lang}
         // helperText={fieldState.isDirty ? 'dirty' : ''}
-        error={fieldState.isDirty}
+        color={fieldState.isDirty ? 'warning' : 'primary'}
         fullWidth
+        focused
         InputProps={{
           endAdornment: (
             <InputAdornment

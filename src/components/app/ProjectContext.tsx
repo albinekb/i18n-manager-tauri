@@ -10,6 +10,20 @@ import useProject, { Project } from '../project/hooks/useProject'
 import { FormProvider, useForm } from 'react-hook-form'
 import { useDebounce } from 'usehooks-ts'
 
+export type TranslationState = {
+  fromLanguage: string | null
+  toLanguages: string[]
+  mode: 'all' | 'this'
+  overwrite: boolean
+}
+
+const initialTranslationState: TranslationState = {
+  fromLanguage: null,
+  toLanguages: [],
+  mode: 'this',
+  overwrite: false,
+}
+
 type TProjectContext = {
   project: Project
   selected: string | null
@@ -23,6 +37,10 @@ type TProjectContext = {
   searchString: string
   setSearchString: Dispatch<SetStateAction<string>>
   debouncedSearchString: string
+  translationState: [
+    TranslationState,
+    Dispatch<SetStateAction<TranslationState>>,
+  ]
 }
 const ProjectContext = React.createContext<TProjectContext>(null)
 
@@ -101,6 +119,7 @@ export default function ProjectContextProvider({ children, path }: Props) {
   const [added, setAdded] = useState<string[]>([])
   const [deleted, setDeleted] = useState<string[]>([])
   const [searchString, setSearchString] = useState<string>('')
+  const translationState = useState<TranslationState>(initialTranslationState)
   const debouncedSearchString = useDebounce(searchString, 500)
   // useEffect(() => {
   //   if (typeof window === 'undefined') return
@@ -123,6 +142,7 @@ export default function ProjectContextProvider({ children, path }: Props) {
       searchString,
       setSearchString,
       debouncedSearchString,
+      translationState,
     }),
     [
       project,
@@ -137,6 +157,7 @@ export default function ProjectContextProvider({ children, path }: Props) {
       searchString,
       setSearchString,
       debouncedSearchString,
+      translationState,
     ],
   )
   if (!project) return null
