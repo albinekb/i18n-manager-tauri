@@ -5,13 +5,12 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import useKeyTree, { findKeys, KeyTree } from './hooks/useKeyTree'
 import {
-  Badge,
-  CircularProgress,
   IconButton,
   InputAdornment,
   LinearProgress,
   Stack,
   TextField,
+  Toolbar,
 } from '@mui/material'
 import Fuse from 'fuse.js'
 import { useDebounce } from 'usehooks-ts'
@@ -22,10 +21,18 @@ import { ContextMenu } from '../shared/ContextMenu'
 import { expandKeys, useProjectContext } from '../app/ProjectContext'
 import { useController, useFormContext, useFormState } from 'react-hook-form'
 import dotProp from 'dot-prop'
-import { Clear, WarningOutlined } from '@mui/icons-material'
+import {
+  Clear,
+  ExpandMore,
+  SearchTwoTone,
+  UnfoldLess,
+  WarningOutlined,
+} from '@mui/icons-material'
 import clsx from 'clsx'
 import traverse from 'traverse'
 import sortOn from 'sort-on'
+import StaticBadge from '../shared/StaticBadge'
+import TreeNavigatorToolbar from '../TreeNavigator/TreeNavigatorToolbar'
 type Props = {}
 
 const RenderTreeForm = ({
@@ -84,16 +91,7 @@ const RenderTreeForm = ({
           >
             {nodes.name}
           </span>
-          {count && (
-            <Badge
-              badgeContent={count}
-              color='primary'
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'left',
-              }}
-            />
-          )}
+          {count && <StaticBadge badgeContent={count} color='primary' />}
           {isDirty && <WarningOutlined fontSize='small' />}
         </Stack>
       }
@@ -148,12 +146,6 @@ const flatKeys = (tree: KeyTree[], languages) => {
     }
     return [key, null]
   }
-
-  const json = traverse(tree).map(function (x) {
-    if (typeof x === 'object' && x.__leaf) {
-      this.update(x.en || x.sv)
-    }
-  })
 
   const keysFlat = Object.entries(flatten(tree, { delimiter: '.' }))
     .filter(
@@ -210,7 +202,7 @@ export default function TreeNavigator({}: Props) {
         : [],
     [project.languageTree],
   )
-  console.log(keysFlat)
+  // console.log(keysFlat)
 
   const miniSearch = useMemo(() => {
     return new MiniSearch({
@@ -434,32 +426,7 @@ export default function TreeNavigator({}: Props) {
 
   return (
     <div className='flex flex-col w-80 overflow-hidden'>
-      <div className='p-4'>
-        <TextField
-          label='Search'
-          value={searchString}
-          onChange={(e) => setSearchString(e.target.value)}
-          size='small'
-          inputProps={{
-            autoComplete: 'off',
-            autoCorrect: 'off',
-            autoCapitalize: 'off',
-          }}
-          fullWidth
-          InputProps={{
-            endAdornment: (
-              <InputAdornment
-                position='end'
-                className={searchString ? '' : 'hidden'}
-              >
-                <IconButton size='small' onClick={() => setSearchString('')}>
-                  <Clear fontSize='small' />
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-        />
-      </div>
+      <TreeNavigatorToolbar />
       <ContextMenu className='flex overflow-hidden'>
         {isSearching ? (
           <LinearProgress variant='query' className='w-full mx-4' />

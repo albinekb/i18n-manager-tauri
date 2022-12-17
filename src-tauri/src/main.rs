@@ -28,6 +28,15 @@ fn allow_directory(app_handle: tauri::AppHandle, path: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", path)
 }
 
+#[tauri::command]
+fn allow_file(app_handle: tauri::AppHandle, path: &str) -> String {
+    app_handle
+        .fs_scope()
+        .allow_file(path)
+        .expect("Failed to allow directory");
+    format!("Hello, {}! You've been greeted from Rust!", path)
+}
+
 fn create_window_menu() -> Menu {
     let mut window_menu = Menu::new();
     window_menu = window_menu.add_native_item(MenuItem::Minimize);
@@ -135,7 +144,7 @@ fn main() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![allow_directory])
+        .invoke_handler(tauri::generate_handler![allow_directory, allow_file])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

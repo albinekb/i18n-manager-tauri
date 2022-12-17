@@ -16,6 +16,8 @@ const ProjectStatusBar = dynamic(
 export default function Project() {
   const { path } = useRouter().query as { path: string }
 
+  if (!path) return null
+
   return (
     <ProjectContextProvider path={path}>
       <div className='flex flex-col overflow-hidden w-full'>

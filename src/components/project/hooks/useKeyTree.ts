@@ -78,7 +78,7 @@ export function findKeys(json, root, languages) {
 }
 
 function buildKeyTree(project: Project, values): KeyTree[] {
-  console.log('building key tree', project)
+  // console.log('building key tree', project)
   const languages = project.languages
   return findKeys(values, '', languages)
 }

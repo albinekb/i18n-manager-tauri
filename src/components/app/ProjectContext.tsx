@@ -102,12 +102,12 @@ export default function ProjectContextProvider({ children, path }: Props) {
   const [deleted, setDeleted] = useState<string[]>([])
   const [searchString, setSearchString] = useState<string>('')
   const debouncedSearchString = useDebounce(searchString, 500)
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    import('@tauri-apps/api/window').then(({ appWindow }) => {
-      appWindow.setTitle(path)
-    })
-  }, [path])
+  // useEffect(() => {
+  //   if (typeof window === 'undefined') return
+  //   import('@tauri-apps/api/window').then(({ appWindow }) => {
+  //     appWindow.setTitle(path)
+  //   })
+  // }, [path])
 
   const value = useMemo(
     () => ({
