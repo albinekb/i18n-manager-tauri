@@ -3,7 +3,9 @@
     windows_subsystem = "windows"
 )]
 
-use tauri::{AboutMetadata, CustomMenuItem, Manager, Menu, MenuItem, Submenu, WindowMenuEvent};
+use tauri::{
+    api::file, AboutMetadata, CustomMenuItem, Manager, Menu, MenuItem, Submenu, WindowMenuEvent,
+};
 use tauri_plugin_store::PluginBuilder;
 
 // the payload type must implement `Serialize` and `Clone`.
@@ -26,30 +28,45 @@ fn allow_directory(app_handle: tauri::AppHandle, path: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", path)
 }
 
+fn create_window_menu() -> Menu {
+    let mut window_menu = Menu::new();
+    window_menu = window_menu.add_native_item(MenuItem::Minimize);
+
+    window_menu = window_menu.add_native_item(MenuItem::Zoom);
+    window_menu = window_menu.add_native_item(MenuItem::Separator);
+
+    window_menu = window_menu.add_native_item(MenuItem::CloseWindow);
+
+    window_menu
+}
+
 fn create_menu(app_name: &str) -> Menu {
     let mut menu = Menu::new();
 
-    {
-        menu = menu.add_submenu(Submenu::new(
-            app_name,
-            Menu::new()
-                .add_native_item(MenuItem::About(
-                    app_name.to_string(),
-                    AboutMetadata::default(),
-                ))
-                .add_native_item(MenuItem::Separator)
-                .add_native_item(MenuItem::Services)
-                .add_native_item(MenuItem::Separator)
-                .add_native_item(MenuItem::Hide)
-                .add_native_item(MenuItem::HideOthers)
-                .add_native_item(MenuItem::ShowAll)
-                .add_native_item(MenuItem::Separator)
-                .add_native_item(MenuItem::Quit),
-        ));
-    }
+    menu = menu.add_submenu(Submenu::new(
+        app_name,
+        Menu::new()
+            .add_native_item(MenuItem::About(
+                app_name.to_string(),
+                AboutMetadata::default(),
+            ))
+            .add_native_item(MenuItem::Separator)
+            .add_item(CustomMenuItem::new("settings", "Preferences...").accelerator("cmd+,"))
+            // .add_native_item(MenuItem::Services)
+            .add_native_item(MenuItem::Separator)
+            .add_native_item(MenuItem::Hide)
+            .add_native_item(MenuItem::HideOthers)
+            .add_native_item(MenuItem::ShowAll)
+            .add_native_item(MenuItem::Separator)
+            .add_native_item(MenuItem::Quit),
+    ));
 
     let mut file_menu = Menu::new();
+
     file_menu = file_menu.add_native_item(MenuItem::CloseWindow);
+    file_menu = file_menu.add_native_item(MenuItem::Separator);
+    file_menu = file_menu.add_item(CustomMenuItem::new("open", "Open"));
+    file_menu = file_menu.add_item(CustomMenuItem::new("close", "Close"));
 
     menu = menu.add_submenu(Submenu::new("File", file_menu));
 
@@ -72,21 +89,8 @@ fn create_menu(app_name: &str) -> Menu {
         Menu::new().add_native_item(MenuItem::EnterFullScreen),
     ));
 
-    let mut window_menu = Menu::new();
-    window_menu = window_menu.add_native_item(MenuItem::Minimize);
-
-    window_menu = window_menu.add_native_item(MenuItem::Zoom);
-    window_menu = window_menu.add_native_item(MenuItem::Separator);
-
-    window_menu = window_menu.add_native_item(MenuItem::CloseWindow);
+    let mut window_menu = create_window_menu();
     menu = menu.add_submenu(Submenu::new("Window", window_menu));
-
-    menu = menu.add_submenu(Submenu::new(
-        "File",
-        Menu::new()
-            .add_item(CustomMenuItem::new("open", "Open"))
-            .add_item(CustomMenuItem::new("close", "Close")),
-    ));
 
     menu = menu.add_submenu(Submenu::new(
         "Navigation",
@@ -98,9 +102,10 @@ fn create_menu(app_name: &str) -> Menu {
     menu
 }
 
+const APP_NAME: &str = "Tauri App";
+
 fn main() {
-    let app_name = "i18n";
-    let menu = create_menu(app_name);
+    let menu = create_menu(APP_NAME);
 
     tauri::Builder::default()
         .plugin(PluginBuilder::default().build())
@@ -125,6 +130,9 @@ fn main() {
             "back" => {
                 go_back(event);
             }
+            "settings" => {
+                open_settings(event);
+            }
             _ => {}
         })
         .invoke_handler(tauri::generate_handler![allow_directory])
@@ -143,4 +151,32 @@ fn go_back(event: WindowMenuEvent) {
             },
         )
         .unwrap();
+}
+
+fn open_settings(event: WindowMenuEvent) {
+    let mut window_menu = create_window_menu();
+    let menu = Menu::new()
+        .add_submenu(Submenu::new(
+            APP_NAME,
+            Menu::new()
+                .add_native_item(MenuItem::About(
+                    APP_NAME.to_string(),
+                    AboutMetadata::default(),
+                ))
+                // .add_native_item(MenuItem::Services)
+                .add_native_item(MenuItem::Separator)
+                .add_native_item(MenuItem::Hide)
+                .add_native_item(MenuItem::HideOthers)
+                .add_native_item(MenuItem::ShowAll)
+                .add_native_item(MenuItem::Separator)
+                .add_native_item(MenuItem::Quit),
+        ))
+        .add_submenu(Submenu::new("Window", window_menu));
+
+    let app = event.window().app_handle();
+    let prefs_window =
+        tauri::WindowBuilder::new(&app, "local", tauri::WindowUrl::App("/settings".into()))
+            .title("Preferences")
+            // .menu(menu)
+            .build();
 }

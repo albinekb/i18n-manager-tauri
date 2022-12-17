@@ -222,7 +222,7 @@ export default function TreeNavigator({}: Props) {
       //   processTerm: (term) => term.toLowerCase(), // search query processing
       // },
       // searchOptions: {
-      //   tokenize: (string) => string.split(/\s/g),
+      //   tokenize: (string) => [string],
       //   // .split(/[\s-]+/) // search query tokenizer
       // },
     })
@@ -337,7 +337,7 @@ export default function TreeNavigator({}: Props) {
   const results = useMemo(() => {
     if (!debouncedSearchString || !miniSearch || searchEmpty) return null
     return miniSearch.search(debouncedSearchString, {
-      fuzzy: false,
+      fuzzy: 1,
     })
   }, [miniSearch, debouncedSearchString])
 
