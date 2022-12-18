@@ -5,7 +5,13 @@ const fs = require('fs')
 const packageJsonPath = path.join(__dirname, '../package.json')
 const packageJson = require(packageJsonPath)
 
-const version = semver.inc(packageJson.version, 'patch')
+const level = process.argv[process.argv.length - 1] || 'patch'
+if (level === 'none') {
+  console.log('Skipping version bump')
+  process.exit(0)
+}
+console.log('Bumping version', level)
+const version = semver.inc(packageJson.version, level)
 
 packageJson.version = version
 

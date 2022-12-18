@@ -1,11 +1,38 @@
 name: 'cut-release'
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      bump-level:
+        type: choice
+        description: Bump level
+        required: true
+        default: none
+        options:
+        - none
+        - patch
+        - minor
+        - major
 jobs:
   cut-release:
+    if: github.ref_name == 'development'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
           node-version: 18
+          cache: yarn
+      - run: yarn --frozen-lockfile --production=false
+      - run: git config --global user.email "github-actions[bot]@users.noreply.github.com" && git config --global user.name "github-actions[bot]"
+      - name: Bump version (${{ github.event.inputs.bump-level }})
+        if: github.event.inputs.bump-level != 'none'
+        run: yarn bump ${{ github.event.inputs.bump-level }}
+      - name: Push bumped version
+        if: github.event.inputs.bump-level != 'none'
+        run: git commit -am "Bump version ${{ github.event.inputs.bump-level }}" && git push
+      - uses: actions/checkout@v3
+        with:
+          ref: 'release'
       - run: yarn release
+        env:
+          TERM: xterm
