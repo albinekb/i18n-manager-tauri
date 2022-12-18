@@ -25,7 +25,7 @@ jobs:
       - name: Install aarch64 dependencies
         run: rustup target add aarch64-apple-darwin
       - name: Install app dependencies
-        run: yarn
+        run: yarn --frozen-lockfile
       - name: Release tauri darwin
         uses: tauri-apps/tauri-action@v0
         id: tauri-action
@@ -40,7 +40,10 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: --target x86_64-apple-darwin
-      - run: echo "[View release](${{ steps.tauri-action.outputs.releaseHtmlUrl }})" >> $GITHUB_STEP_SUMMARY
+      - name: Print release url
+        run: echo "[View release](${{ steps.tauri-action.outputs.releaseHtmlUrl }})" >> $GITHUB_STEP_SUMMARY
+      - name: Clean release folder
+        run: rm -rf ${{ github.workspace }}/src-tauri/target/release/bundle
       - name: Release tauri aarch64
         uses: tauri-apps/tauri-action@v0
         env:
