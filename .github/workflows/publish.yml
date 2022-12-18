@@ -27,7 +27,7 @@ jobs:
       - name: Install app dependencies
         run: yarn --frozen-lockfile
       - name: Release tauri darwin
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@dev
         id: tauri-action
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -45,7 +45,7 @@ jobs:
       - name: Clean release folder
         run: rm -rf ${{ github.workspace }}/src-tauri/target/release/bundle
       - name: Release tauri aarch64
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@dev
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
