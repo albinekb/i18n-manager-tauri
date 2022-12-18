@@ -14,15 +14,15 @@ if [[ $(git branch --show-current) != "development" ]]; then
   echo "Current branch is not development, switching.."
   git checkout development
 fi
+CURRENT_VERSION=$(cat package.json | jq -r '.version')
 
 echo "Fetching latest changes.."
-git pull origin development
 git checkout release
 git pull origin release
 
-echo "Checking versions..."
+echo "Checking version..."
 RELEASED_VERSION=$(git show release:package.json | jq -r '.version')
-CURRENT_VERSION=$(cat package.json | jq -r '.version')
+
 
 echo "${bold}release version${normal}: $RELEASED_VERSION
 ${bold}development version${normal}: $CURRENT_VERSION"
