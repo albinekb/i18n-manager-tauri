@@ -19,6 +19,8 @@ jobs:
         uses: ./.github/actions/cache
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+      - name: Install aarch64 dependencies
+        run: rustup target add aarch64-apple-darwin
       - name: Install app dependencies
         run: yarn install --frozen-lockfile
       - uses: tauri-apps/tauri-action@v0
