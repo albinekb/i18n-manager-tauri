@@ -22,9 +22,12 @@ jobs:
         uses: ./.github/actions/cache
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+      - name: Install aarch64 dependencies
+        run: rustup target add aarch64-apple-darwin
       - name: Install app dependencies
         run: yarn
-      - uses: tauri-apps/tauri-action@v0
+      - name: Release tauri darwin
+        uses: tauri-apps/tauri-action@v0
         id: tauri-action
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -36,4 +39,14 @@ jobs:
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: false
           prerelease: false
+          args: --target x86_64-apple-darwin
       - run: echo "[View release](${{ steps.tauri-action.outputs.releaseHtmlUrl }})" >> $GITHUB_STEP_SUMMARY
+      - name: Release tauri aarch64
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        with:
+          releaseId: ${{ steps.tauri-action.outputs.releaseId }}
+          args: --target aarch64-apple-darwin
