@@ -54,11 +54,7 @@ function TranslationForm() {
       alert('No API key')
       return
     }
-    const from = dotProp.get(
-      project.languageTree,
-      `${selected}.${state.fromLanguage}`,
-      '',
-    )
+    const from = formContext.getValues(`${selected}.${state.fromLanguage}`)
     if (!from) {
       alert('No text to translate')
       return
