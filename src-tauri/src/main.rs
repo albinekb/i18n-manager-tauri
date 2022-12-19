@@ -6,7 +6,10 @@
 use tauri::{
     api::file, AboutMetadata, CustomMenuItem, Manager, Menu, MenuItem, Submenu, WindowMenuEvent,
 };
+
 use tauri_plugin_store::PluginBuilder;
+
+use sys_locale::get_locale;
 
 // the payload type must implement `Serialize` and `Clone`.
 #[derive(Clone, serde::Serialize)]
@@ -35,6 +38,13 @@ fn allow_file(app_handle: tauri::AppHandle, path: &str) -> String {
         .allow_file(path)
         .expect("Failed to allow directory");
     format!("Hello, {}! You've been greeted from Rust!", path)
+}
+
+#[tauri::command]
+fn get_sys_locale() -> String {
+    let locale = get_locale().unwrap_or_else(|| String::from("en-US"));
+
+    locale
 }
 
 fn create_window_menu() -> Menu {
@@ -144,7 +154,11 @@ fn main() {
             }
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![allow_directory, allow_file])
+        .invoke_handler(tauri::generate_handler![
+            allow_directory,
+            allow_file,
+            get_sys_locale
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

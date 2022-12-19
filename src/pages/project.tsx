@@ -14,8 +14,11 @@ const ProjectStatusBar = dynamic(
 )
 
 export default function Project() {
-  const { path } = useRouter().query as { path: string }
-
+  const path =
+    (useRouter().query.path as string) || typeof window !== 'undefined'
+      ? (new URLSearchParams(window.location.search).get('path') as string)
+      : null
+  console.log(path)
   if (!path) return null
 
   return (

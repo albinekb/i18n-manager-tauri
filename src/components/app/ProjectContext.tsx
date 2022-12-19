@@ -9,6 +9,7 @@ import React, {
 import useProject, { Project } from '../project/hooks/useProject'
 import { FormProvider, useForm } from 'react-hook-form'
 import { useDebounce } from 'usehooks-ts'
+import { findLanguage, getSystemLocale } from '../../lib/getSystemLocale'
 
 export type TranslationState = {
   fromLanguage: string | null
@@ -121,6 +122,27 @@ export default function ProjectContextProvider({ children, path }: Props) {
   const [searchString, setSearchString] = useState<string>('')
   const translationState = useState<TranslationState>(initialTranslationState)
   const debouncedSearchString = useDebounce(searchString, 500)
+  const hasFromLanguage = Boolean(translationState[0].fromLanguage)
+  useEffect(() => {
+    if (!project?.languages?.length || hasFromLanguage) {
+      return
+    }
+
+    async function init() {
+      const [, setState] = translationState
+
+      const fromLanguage = await findLanguage(project.languages)
+
+      setState((state) => {
+        const toLanguages = state.toLanguages?.length
+          ? state.toLanguages.filter((l) => l !== fromLanguage)
+          : project.languages.filter((l) => l !== fromLanguage)
+        return { ...state, fromLanguage, toLanguages }
+      })
+    }
+
+    init()
+  }, [project.languages, hasFromLanguage])
   // useEffect(() => {
   //   if (typeof window === 'undefined') return
   //   import('@tauri-apps/api/window').then(({ appWindow }) => {
