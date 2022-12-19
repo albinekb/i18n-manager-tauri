@@ -23,9 +23,10 @@ export default function TreeNavigatorToolbar({}: Props) {
   const projectContext = useProjectContext()
   return (
     <Stack direction='column'>
-      <Toolbar variant='regular'>
+      <div className='px-4 pb-4'>
         <Search />
-      </Toolbar>
+      </div>
+
       <TreeView
         onNodeSelect={() => {}}
         onNodeToggle={() => {}}
@@ -64,7 +65,6 @@ function Search() {
       value={searchString}
       placeholder='Search'
       onChange={(e) => setSearchString(e.target.value)}
-      size='small'
       inputProps={{
         autoComplete: 'off',
         autoCorrect: 'off',

@@ -28,9 +28,12 @@ type Props = {}
 
 export default function TranslateSection({}: Props) {
   return (
-    <Accordion>
+    <Accordion
+      classes={{ root: 'before:border-none rounded' }}
+      variant='outlined'
+    >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        Translate
+        <span className='font-semibold'>Translate</span>
       </AccordionSummary>
       <AccordionDetails>
         <TranslationForm />
@@ -87,7 +90,7 @@ function TranslationForm() {
     } finally {
       setLoading(false)
     }
-  }, [state])
+  }, [state, selected])
 
   const disabled =
     (state.mode === 'this' && !selected) ||

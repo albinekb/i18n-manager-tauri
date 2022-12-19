@@ -69,8 +69,9 @@ export function ContextMenu({
     data: any
   } | null>(null)
 
-  const handleContextMenu = (event: React.MouseEvent) => {
+  const handleContextMenu = React.useCallback((event: React.MouseEvent) => {
     event.preventDefault()
+    event.stopPropagation()
     if (contextMenu !== null) {
       setContextMenu(null)
       return
@@ -83,32 +84,64 @@ export function ContextMenu({
       mouseY: event.clientY - 6,
       data,
     })
-  }
+  }, [])
 
-  const handleClose = () => {
+  const handleClose = React.useCallback(() => {
     setContextMenu(null)
-  }
+  }, [])
+  const closeDialog = React.useCallback(() => {
+    setDialog(null)
+  }, [])
 
-  const handleNew = () => {
+  const handleNew = React.useCallback(() => {
     console.log('new', contextMenu?.data)
+    const data = { ...contextMenu?.data }
     handleClose()
     setDialog({
-      data: contextMenu?.data,
+      data,
       action: 'new',
     })
-  }
+  }, [contextMenu?.data])
 
-  const handleDelete = () => {
-    formContext.resetField(contextMenu?.data?.id, {
+  const { resetField, setValue } = formContext
+  const dataId = contextMenu?.data?.id || dialog?.data?.id
+  console.log('dataId', dataId)
+  const handleDelete = React.useCallback(() => {
+    resetField(dataId, {
       defaultValue: undefined,
     })
-    formContext.setValue(contextMenu?.data?.id, undefined, {
+    setValue(dataId, undefined, {
       shouldDirty: true,
     })
-    projectContext.setDeleted((edits) => [...edits, contextMenu?.data?.id])
+    projectContext.setDeleted((edits) => [...edits, dataId])
 
     handleClose()
-  }
+  }, [dataId])
+
+  const submit = React.useCallback(
+    ({ id: dataId, type, value }) => {
+      if (!dataId) throw new Error('No data id')
+      const name = `${dataId}.${value}`
+      if (type === 'value') {
+        setValue(
+          name,
+          projectContext.project.languages.reduce((acc, lang) => {
+            acc[lang] = ''
+            return acc
+          }, {}),
+        )
+        projectContext.setAdded((edits) => [...edits, name])
+        selectKey(projectContext, name)
+        closeDialog()
+      } else {
+        setValue(name, {})
+        projectContext.setAdded((edits) => [...edits, name])
+        selectKey(projectContext, name)
+        closeDialog()
+      }
+    },
+    [projectContext.project.languages],
+  )
 
   return (
     <div
@@ -116,7 +149,13 @@ export function ContextMenu({
       style={{ cursor: 'context-menu', ...style }}
       className={className}
     >
-      {dialog && <ContextDialog {...dialog} onClose={() => setDialog(null)} />}
+      {dialog && (
+        <ContextDialog
+          {...dialog}
+          onClose={() => setDialog(null)}
+          onSubmit={submit}
+        />
+      )}
       <Menu
         open={contextMenu !== null}
         onClose={handleClose}
@@ -163,66 +202,53 @@ export function ContextMenu({
   )
 }
 
-function ContextDialog({ data, action, onClose }) {
+function ContextDialog({ data, onClose, onSubmit }) {
   const [type, setType] = React.useState('value')
   const [value, setValue] = React.useState('')
-  const form = useFormContext()
-  const projectContext = useProjectContext()
 
-  const submit = () => {
-    const name = `${data.id}.${value}`
-    if (type === 'value') {
-      form.setValue(
-        name,
-        projectContext.project.languages.reduce((acc, lang) => {
-          acc[lang] = ''
-          return acc
-        }, {}),
-      )
-      projectContext.setAdded((edits) => [...edits, name])
-      selectKey(projectContext, name)
-      onClose()
-    } else {
-      form.setValue(name, {})
-      projectContext.setAdded((edits) => [...edits, name])
-      selectKey(projectContext, name)
-      onClose()
-    }
-  }
+  const onFormSubmit = React.useCallback(
+    (event) => {
+      event.preventDefault()
+      onSubmit({ type, value, id: data?.key })
+    },
+    [onSubmit, type, value, data?.key],
+  )
+
+  const handleChangeValue = React.useCallback(
+    (event) => {
+      setValue(event.target.value)
+    },
+    [setValue],
+  )
+
+  const handleChangeType = React.useCallback(
+    (event) => {
+      setType(event.target.value)
+    },
+    [setType],
+  )
 
   return (
     <Dialog
       open={true}
       onClose={onClose}
-      // disableAutoFocus
-      // disableEnforceFocus
+      disableAutoFocus
+      disableEnforceFocus
       disableRestoreFocus
       PaperComponent={(props) => (
         <Paper
-          component={(props) => (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault()
-                submit()
-              }}
-              {...props}
-            />
-          )}
+          component={(props) => <form onSubmit={onFormSubmit} {...props} />}
+          elevation={24}
           {...props}
         />
       )}
     >
       <DialogTitle>{data?.key}</DialogTitle>
       <DialogContent>
-        <div className='flex flex-col flex-1'>
+        <div className='flex flex-col flex-1 '>
           <FormControl>
             <FormLabel>Type</FormLabel>
-            <RadioGroup
-              value={type}
-              onChange={(e) => {
-                setType(e.target.value)
-              }}
-            >
+            <RadioGroup value={type} onChange={handleChangeType}>
               <Stack direction='row'>
                 <FormControlLabel
                   value='value'
@@ -241,7 +267,8 @@ function ContextDialog({ data, action, onClose }) {
             label='key'
             autoFocus
             value={value}
-            onChange={(e) => setValue(e.target.value)}
+            focused
+            onChange={handleChangeValue}
             autoComplete='off'
             autoCapitalize='off'
             autoCorrect='off'

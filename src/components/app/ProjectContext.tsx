@@ -51,11 +51,13 @@ type Props = {
 }
 
 const focusKey = (selected: string) => {
-  window.requestAnimationFrame(() => {
-    document
-      .querySelector(`[data-id="${selected}"]`)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  })
+  const key = document.querySelector(`[data-id="${selected}"]`)
+  if (key) {
+    window.requestAnimationFrame(() => {
+      key?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    })
+    return true
+  }
 }
 
 export const selectKey = (
@@ -91,8 +93,8 @@ export const expandKeys = (selected: string[]) => {
 
 const expandKey = (setExpanded, selected: string, focus = false) => {
   const nodes = selected.split('.')
-  if (!nodes?.length) {
-    if (focus) focusKey(selected)
+
+  if ((focus && focusKey(selected)) || !nodes?.length) {
     return
   }
   setExpanded((expanded) => {

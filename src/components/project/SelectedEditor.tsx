@@ -1,5 +1,8 @@
 import {
   Button,
+  Card,
+  CardContent,
+  CardHeader,
   IconButton,
   InputAdornment,
   Stack,
@@ -34,8 +37,24 @@ export default function SelectedEditor({}: Props) {
     return <div>'woop'</div>
   }
   return (
-    <Stack className='flex-1 px-4' spacing={2}>
-      <Typography variant='h5'>{selected}</Typography>
+    <Stack spacing={2} className='flex-1 px-4 overflow-y-auto py-4'>
+      <div>
+        <Card variant='outlined'>
+          <CardContent>
+            <Typography
+              sx={{ fontSize: 14 }}
+              color='text.secondary'
+              gutterBottom
+            >
+              Selected key
+            </Typography>
+            <Typography variant='h5' component='div'>
+              {selected}
+            </Typography>
+          </CardContent>
+        </Card>
+      </div>
+
       <TranslateSection />
       {project.languages.map((lang) => {
         const value = dotProp.get(project.languageTree, `${selected}.${lang}`)

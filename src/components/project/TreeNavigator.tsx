@@ -418,7 +418,7 @@ export default function TreeNavigator({}: Props) {
   const isSearching = searchString && searchString !== debouncedSearchString
 
   return (
-    <div className='flex flex-col w-80 overflow-hidden'>
+    <div className='flex flex-col w-80 overflow-hidden height-full pt-4 bg-gray-50'>
       <TreeNavigatorToolbar />
       <ContextMenu className='flex overflow-hidden'>
         {isSearching ? (
