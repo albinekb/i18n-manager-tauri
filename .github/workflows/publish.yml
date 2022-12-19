@@ -70,6 +70,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 16
+      - name: Create tauri.conf.prod.json
+        run: yarn tauri:setup-config
       - name: Setup cache
         uses: ./.github/actions/cache
       - name: Install Rust stable
@@ -80,12 +82,12 @@ jobs:
         run: yarn --frozen-lockfile
       - name: Release tauri x64
         uses: tauri-apps/tauri-action@dev
-        id: tauri-x64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
+          configPath: ${{ github.workspace }}/src-tauri/tauri.conf.prod.json
           releaseId: ${{ needs.create-release.outputs.releaseId }}
           args: --target x86_64-apple-darwin
       - name: Release tauri aarch64
@@ -95,6 +97,7 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
+          configPath: ${{ github.workspace }}/src-tauri/tauri.conf.prod.json
           releaseId: ${{ needs.create-release.outputs.releaseId }}
           args: --target aarch64-apple-darwin
 
@@ -121,7 +124,7 @@ jobs:
   delete-release:
     runs-on: ubuntu-20.04
     needs: [create-release, build-tauri]
-    if: ${{ needs.build-tauri.result == 'failure' && needs.create-release.outputs.releaseId == '' }}
+    if: ${{ needs.build-tauri.result == 'failure' && needs.create-release.outputs.releaseId != '' }}
     steps:
     - name: Delete release
       id: delete-release

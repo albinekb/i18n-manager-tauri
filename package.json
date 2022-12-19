@@ -6,6 +6,7 @@
     "next:dev": "next dev -p 1420",
     "next:build": "next build && next export -o dist",
     "tauri:before-build": "if test \"$CI\" = true; then [ ! -d \"./dist\" ] && yarn next:build || echo \"dist already exists, skipping build\"; else yarn next:build; fi",
+    "tauri:setup-config": "node ./scripts/setup-config.js",
     "build": "tauri build",
     "tauri": "tauri",
     "dev": "tauri dev",
