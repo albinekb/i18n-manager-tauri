@@ -18,3 +18,9 @@ require('fs').writeFileSync(
   pathJoin(__dirname, '../src-tauri/tauri.conf.prod.json'),
   JSON.stringify(prodConfig, null, 2),
 )
+
+if (prodConfig.tauri.updater.pubkey) {
+  if (!process.env.TAURI_PRIVATE_KEY) {
+    throw new Error('TAURI_PRIVATE_KEY is not defined')
+  }
+}

@@ -7,7 +7,7 @@
     "next:build": "next build && next export -o dist",
     "tauri:before-build": "if test \"$CI\" = true; then [ ! -d \"./dist\" ] && yarn next:build || echo \"dist already exists, skipping build\"; else yarn next:build; fi",
     "tauri:setup-config": "node ./scripts/setup-config.js",
-    "build": "tauri build",
+    "build": "yarn tauri:setup-config && tauri build --config src-tauri/tauri.conf.prod.json",
     "tauri": "tauri",
     "dev": "tauri dev",
     "bump": "./scripts/bump-version.sh",
