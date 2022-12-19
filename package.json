@@ -9,7 +9,7 @@
     "build": "tauri build",
     "tauri": "tauri",
     "dev": "tauri dev",
-    "bump": "node ./scripts/bump-version.js",
+    "bump": "./scripts/bump-version.sh",
     "release": "./scripts/sync-release-branch.sh"
   },
   "dependencies": {
