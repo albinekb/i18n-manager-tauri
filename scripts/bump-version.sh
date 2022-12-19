@@ -33,4 +33,15 @@ if ! exists_in_list "$allowed_levels" " " "$level"; then
   exit 0
 fi
 
-npm version ${level} -m '🚢 %s'
+new_version=$(npm version --no-git-tag-version ${level})
+log=$(git log --graph --pretty=format:'%Cred%h%Creset  %s%Creset' --invert-grep --grep="🚢" release..development)
+message=$(printf "🚢 ${new_version}\n\n${log}")
+
+echo -e "${bold}New version: ${new_version}${normal}\\n\\n${message}"
+read -p "Continue (y/n)?" CONT
+if [ "$CONT" = "y" ]; then
+  git add package.json
+  git commit -m "🚢 ${new_version}" -m "${log}"
+else
+  git checkout package.json
+fi
