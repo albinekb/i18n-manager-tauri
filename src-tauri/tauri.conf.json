@@ -94,7 +94,9 @@
         "height": 600,
         "resizable": true,
         "title": "i18n-manager-tauri",
-        "width": 800
+        "width": 800,
+        "titleBarStyle": "Visible",
+        "theme": "Dark"
       }
     ]
   }
