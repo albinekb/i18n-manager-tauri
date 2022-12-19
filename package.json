@@ -6,7 +6,6 @@
     "next:dev": "next dev -p 1420",
     "next:build": "next build && next export -o dist",
     "tauri:before-build": "if test \"$CI\" = true; then [ ! -d \"./dist\" ] && yarn next:build || echo \"dist already exists, skipping build\"; else yarn next:build; fi",
-    "tauri:before-bundle": "[ -d \"./src-tauri/target/aarch64-apple-darwin/release/bundle/macos/i18n-manager-tauri.app\" ] && xattr -cr ./src-tauri/target/aarch64-apple-darwin/release/bundle/macos/i18n-manager-tauri.app || echo \"no macos bundle found, skipping xattr -cr\"",
     "build": "tauri build",
     "tauri": "tauri",
     "dev": "tauri dev",

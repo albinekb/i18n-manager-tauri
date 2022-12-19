@@ -2,7 +2,6 @@
   "build": {
     "beforeDevCommand": "yarn next:dev",
     "beforeBuildCommand": "yarn tauri:before-build",
-    "beforeBundleCommand": "yarn tauri:before-bundle",
     "devPath": "http://localhost:1420",
     "distDir": "../dist",
     "withGlobalTauri": false
