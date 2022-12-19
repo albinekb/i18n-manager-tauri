@@ -89,7 +89,7 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          configPath: ${{ github.workspace }}/src-tauri/tauri.conf.prod.json
+          configPath: tauri.conf.prod.json
           releaseId: ${{ needs.create-release.outputs.releaseId }}
           args: --target x86_64-apple-darwin
       - name: Release tauri aarch64
@@ -99,14 +99,14 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          configPath: ${{ github.workspace }}/src-tauri/tauri.conf.prod.json
+          configPath: tauri.conf.prod.json
           releaseId: ${{ needs.create-release.outputs.releaseId }}
           args: --target aarch64-apple-darwin
 
   publish-release:
     runs-on: ubuntu-20.04
     needs: [create-release,build-tauri]
-    if: ${{ needs.build-tauri.result == 'success' && needs.create-release.outputs.releaseId != '' }}
+    if: ${{ needs.build-tauri.result == 'success' }}
     steps:
       - name: Publish release
         id: publish-release
@@ -126,7 +126,7 @@ jobs:
   delete-release:
     runs-on: ubuntu-20.04
     needs: [create-release, build-tauri]
-    if: ${{ needs.build-tauri.result == 'failure' && needs.create-release.outputs.releaseId != '' }}
+    if: ${{ needs.build-tauri.result == 'failure' }}
     steps:
     - name: Delete release
       id: delete-release
