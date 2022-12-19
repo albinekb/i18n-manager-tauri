@@ -143,12 +143,6 @@ export default function ProjectContextProvider({ children, path }: Props) {
 
     init()
   }, [project.languages, hasFromLanguage])
-  // useEffect(() => {
-  //   if (typeof window === 'undefined') return
-  //   import('@tauri-apps/api/window').then(({ appWindow }) => {
-  //     appWindow.setTitle(path)
-  //   })
-  // }, [path])
 
   const value = useMemo(
     () => ({
