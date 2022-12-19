@@ -34,7 +34,7 @@ if ! exists_in_list "$allowed_levels" " " "$level"; then
 fi
 
 new_version=$(npm version --no-git-tag-version ${level})
-log=$(git log --graph --pretty=format:'%Cred%h%Creset  %s%Creset' --invert-grep --grep="🚢" release..development)
+log=$(git log --graph --pretty=format:'%Cred%h%Creset  %s%Creset' --invert-grep --grep="🚢" --grep="🌹" release..development)
 message=$(printf "🚢 ${new_version}\n\n${log}")
 
 echo -e "${bold}New version: ${new_version}${normal}\\n\\n${message}"

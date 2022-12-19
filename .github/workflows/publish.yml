@@ -27,7 +27,9 @@ jobs:
           changelog="$(./scripts/get-changelog.sh)"
           echo "${changelog}" >> $GITHUB_STEP_SUMMARY
           if [[ ! "${changelog}" == *"exiting.."* ]]; then
-            echo "CHANGELOG=${changelog}" >> $GITHUB_OUTPUT
+            echo 'CHANGELOG<<EOF' >> $GITHUB_OUTPUT
+            echo "${changelog}" >> $GITHUB_OUTPUT
+            echo 'EOF' >> $GITHUB_OUTPUT
           fi
       - name: Fail release if no changelog
         if: ${{ steps.get-changelog.outcome != 'success' || steps.get-changelog.outputs.CHANGELOG == '' }}
