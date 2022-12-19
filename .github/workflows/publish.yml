@@ -67,8 +67,6 @@ jobs:
         with:
           releaseId: ${{ needs.create-release.outputs.releaseId }}
           args: --target x86_64-apple-darwin
-      - name: Clean release folder
-        run: rm -rf ${{ github.workspace }}/src-tauri/target/release/bundle
       - name: Release tauri aarch64
         uses: tauri-apps/tauri-action@dev
         env:
