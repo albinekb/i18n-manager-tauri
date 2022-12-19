@@ -5,7 +5,10 @@
 - `yarn install`
 - `yarn dev`
 
-# Test
+# Install
+
+- Get the [release](https://github.com/albinekb/i18n-manager-tauri/releases/latest)
+- If you are getting "i18n-manager-tarui.app is damaged and can't be opened" error, run `xattr -cr i18n-manager-tarui.app` in the terminal
 
 ## Recommended IDE Setup
 
