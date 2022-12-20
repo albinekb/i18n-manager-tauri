@@ -11,86 +11,119 @@ jobs:
   create-release:
     runs-on: ubuntu-20.04
     outputs:
-      releaseId: ${{ steps.create-release.outputs.result }}
+      releaseId: ${{ steps.update-release.outputs.result || steps.create-release.outputs.result }}
       version: ${{ env.PACKAGE_VERSION }}
     steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
       - name: setup node
         uses: actions/setup-node@v3
         with:
           node-version: 16
-      - name: get version
-        id: get-version
-        run: |
-          version=$(node -p "require('./package.json').version")
-          echo "PACKAGE_VERSION=${version}" >> $GITHUB_ENV
-          echo "version=${version}" >> $GITHUB_OUTPUT
-          echo "tag=v${version}" >> $GITHUB_OUTPUT
-          echo "tag=v${version}" >> $GITHUB_ENV
-      - name: Check that release is not already published
+      - name: Get latest tag
+        id: get-tag
         uses: actions/github-script@v6
-        env:
-          TAG: ${{ steps.get-version.outputs.tag }}
         with:
           script: |
-            const { status, data } = await github.rest.repos.getReleaseByTag({
+            const { status, data: tags } = await github.rest.repos.listTags({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag: process.env.TAG
-            }).catch(error => {
-              if (error.status === 404) {
-                return { status: error.status }
-              }
-              throw error
             })
-            if (status === 200) {
-              const  { id: release_id, draft, html_url } = data
+            const tag = tags?.find(tag => tag.name.startsWith('v'))
+
+
+            if (!tag) {
+              core.setFailed('Did not find latest tag')
+              return
+            }
+
+            core.setOutput('tag', tag.name)
+            core.setOutput('version', tag.name.replace('v', ''))
+      - name: Check that release is not already published
+        id: check-release
+        uses: actions/github-script@v6
+        env:
+          TAG: ${{ steps.get-tag.outputs.tag }}
+        with:
+          script: |
+            const { status, data: releses } = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            })
+            const release = releses.find(r => r.tag_name === process.env.TAG)
+            if (found) {
+              const  { id, draft, html_url } = release
 
               if (!draft) {
                 core.setFailed(`Release already exist and is published: ${html_url}`)
                 return
               }
-              
-              await github.rest.repos.deleteRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                release_id
-              })
 
-              core.info('Deleted existing draft release')
+              core.info(`Found existing draft release: ${html_url}`)
+              core.setOutput('releaseId', release.id)
+            } else {
+              core.info(`Did not find release for ${process.env.TAG}`)
             }
-      - name: get changelog
-        id: get-changelog
-        shell: bash
-        run: |
-          changelog="$(./scripts/get-changelog.sh)"
-          echo "${changelog}" >> $GITHUB_STEP_SUMMARY
-          if [[ ! "${changelog}" == *"exiting.."* ]]; then
-            echo 'CHANGELOG<<EOF' >> $GITHUB_OUTPUT
-            echo "${changelog}" >> $GITHUB_OUTPUT
-            echo 'EOF' >> $GITHUB_OUTPUT
-          fi
-      - name: Verify changelog
-        if: ${{ steps.get-changelog.outcome != 'success' || steps.get-changelog.outputs.CHANGELOG == '' }}
+      - name: Get changelog
+        id: 'get-changelog'
         uses: actions/github-script@v3
+        env:
+          TAG: ${{ steps.get-tag.outputs.tag }}
         with:
           script: |
-              core.setFailed('No changelog found')
-      - name: create release
-        if: ${{ steps.get-changelog.outputs.CHANGELOG != '' }} 
+              const { owner, repo } = context.repo
+              const ref = `tags/${process.env.TAG}`
+              const { data: { object: { sha: tag_sha } } } = await github.rest.git.getRef({
+                owner,
+                repo,
+                ref,
+              })
+
+              const { data: { message } } = await .rest.git.getTag({
+                owner,
+                repo,
+                tag_sha,
+              });
+
+              const changelog = message.trim()
+              if (!changelog) {
+                core.setFailed(`Did not find changelog for ${ref}`)
+                return
+              }
+
+              core.setOutput('changelog', changelog)
+              core.exportVariable('CHANGELOG', changelog)
+      - name: Update existing release
+        id: update-release
+        if: ${{ steps.check-release.outputs.releaseId != null }}
+        uses: actions/github-script@v6
+        env:
+          RELEASE_ID: ${{ steps.check-release.outputs.releaseId }}
+          TAG: ${{ steps.get-tag.outputs.tag }}
+          CHANGELOG: ${{ steps.get-changelog.outputs.changelog }}
+        with:
+          script: |
+            const { data } = await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: process.env.RELEASE_ID,
+              name: `App ${process.env.TAG}`,
+              body: `${process.env.CHANGELOG}`,
+            })
+
+            return data.id
+      - name: Create release
+        if: ${{ steps.check-release.outputs.releaseId == null }}
         id: create-release
         uses: actions/github-script@v6
         env:
-          CHANGELOG: ${{ steps.get-changelog.outputs.CHANGELOG }}
+          CHANGELOG: ${{ steps.get-changelog.outputs.changelog }}
+          TAG: ${{ steps.get-tag.outputs.tag }}
         with:
           script: |
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: `v${process.env.PACKAGE_VERSION}`,
-              name: `App v${process.env.PACKAGE_VERSION}`,
+              tag_name: process.env.TAG,
+              name: `App ${process.env.TAG}`,
               body: `${process.env.CHANGELOG}`,
               draft: true,
               prerelease: false
