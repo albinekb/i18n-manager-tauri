@@ -7,7 +7,7 @@
     "withGlobalTauri": false
   },
   "package": {
-    "productName": "i18n-manager-tauri",
+    "productName": "i18n Manager",
     "version": "../package.json"
   },
   "tauri": {
@@ -93,7 +93,7 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "i18n-manager-tauri",
+        "title": "i18n Manager",
         "width": 800,
         "titleBarStyle": "Visible",
         "theme": "Dark"
