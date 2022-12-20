@@ -1,5 +1,10 @@
 name: 'test-on-pr'
+
 on: [pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test-tauri:
@@ -14,15 +19,24 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 18
       - name: Setup cache
         uses: ./.github/actions/cache
+      - name: Install app dependencies
+        run: yarn install --frozen-lockfile
+      - name: Build next.js
+        run: yarn next:build
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
       - name: Install aarch64 dependencies
         run: rustup target add aarch64-apple-darwin
-      - name: Install app dependencies
-        run: yarn install --frozen-lockfile
-      - uses: tauri-apps/tauri-action@v0
+      - name: Create tauri.conf.prod.json
+        run: yarn tauri:setup-config
+      - uses: tauri-apps/tauri-action@dev
+        with:
+            configPath: tauri.conf.prod.json
+            args: --target x86_64-apple-darwin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}

@@ -1,0 +1,22 @@
+name: 'validate-commits'
+
+on: [pull_request]
+
+jobs:
+  verify-commits:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install verify-emoji-commit
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: verify-emoji-commit
+          version: "0.1.0"
+      - name: Verify commit messages
+        env:
+          CLICOLOR_FORCE: true
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          git log --no-merges --skip 0 --oneline origin/${{ github.base_ref }}..HEAD | xargs -L1 verify-emoji-commit
