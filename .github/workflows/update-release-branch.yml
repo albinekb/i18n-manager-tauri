@@ -1,0 +1,31 @@
+name: update-release-branch
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        type: string
+        description: Tag name
+        required: true
+
+
+jobs:
+  update-release-branch:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          ref: release
+      - name: Merge ${{ inputs.tag }} into release
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          git merge "${TAG}"
+          git push origin release

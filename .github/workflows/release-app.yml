@@ -19,4 +19,11 @@ jobs:
     with:
       releaseId: ${{ needs.create-release.outputs.releaseId }}
     secrets: inherit
+  update-release-branch:
+    needs: [create-release, publish-release]
+    uses: ./.github/workflows/update-release-branch.yml
+    with:
+      releaseId: ${{ needs.create-release.outputs.releaseId }}
+      tag: ${{ needs.create-release.outputs.tag }}
+    secrets: inherit
     

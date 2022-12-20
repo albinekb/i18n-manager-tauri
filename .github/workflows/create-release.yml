@@ -6,13 +6,17 @@ on:
       releaseId:
         description: "The created release id"
         value: ${{ jobs.create-release.outputs.releaseId }}
+      tag:
+        description: "The tag for this release"
+        value: ${{ jobs.create-release.outputs.tag }}
+        
 
 jobs:
   create-release:
     runs-on: ubuntu-20.04
     outputs:
       releaseId: ${{ steps.update-release.outputs.result || steps.create-release.outputs.result }}
-      version: ${{ env.PACKAGE_VERSION }}
+      tag: ${{ steps.get-tag.outputs.tag }}
     steps:
       - name: setup node
         uses: actions/setup-node@v3
