@@ -28,12 +28,12 @@ jobs:
         run: |
           cargo install verify-emoji-commit
           git log --oneline ${{ github.head_ref }}..${{ github.ref }} | xargs -L1 verify-emoji-commit
+      - name: Install app dependencies
+        run: yarn install --frozen-lockfile
       - name: Build next.js
         run: yarn next:build
       - name: Install aarch64 dependencies
         run: rustup target add aarch64-apple-darwin
-      - name: Install app dependencies
-        run: yarn install --frozen-lockfile
       - name: Create tauri.conf.prod.json
         run: yarn tauri:setup-config
       - uses: tauri-apps/tauri-action@dev
