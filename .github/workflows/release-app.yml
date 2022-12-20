@@ -6,14 +6,17 @@ on:
 jobs:
   create-release:
     uses: ./.github/workflows/create-release.yml
+    secrets: inherit
   build-release:
     needs: create-release
     uses: ./.github/workflows/build-release.yml
     with:
       releaseId: ${{ needs.create-release.outputs.releaseId }}
+    secrets: inherit
   publish-release:
     needs: [create-release, build-release]
     uses: ./.github/workflows/publish-release.yml
     with:
       releaseId: ${{ needs.create-release.outputs.releaseId }}
+    secrets: inherit
     
