@@ -22,16 +22,12 @@ jobs:
           node-version: 18
       - name: Setup cache
         uses: ./.github/actions/cache
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-      - name: verify commit messages
-        run: |
-          cargo install verify-emoji-commit
-          git log --oneline ${{ github.head_ref }}..${{ github.ref }} | xargs -L1 verify-emoji-commit
       - name: Install app dependencies
         run: yarn install --frozen-lockfile
       - name: Build next.js
         run: yarn next:build
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
       - name: Install aarch64 dependencies
         run: rustup target add aarch64-apple-darwin
       - name: Create tauri.conf.prod.json
