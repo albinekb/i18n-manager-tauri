@@ -1,0 +1,71 @@
+name: 'build-release'
+
+on:
+  workflow_run:
+    workflows: [create-release]
+    types:
+      - completed
+
+jobs:
+  build-tauri:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    strategy:
+      fail-fast: true
+      matrix:
+        platform: [macos-latest]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Get release id
+        uses: actions/github-script@v3
+        id: release-id
+        with:
+          script: |
+            const { status, data } = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            })
+
+            if (!data.draft) {
+              core.setFailed(`Release is not draft: ${data.html_url}`)
+              return
+            }
+
+            return data.id
+      - name: Create tauri.conf.prod.json
+        run: yarn tauri:setup-config
+      - name: Setup cache
+        uses: ./.github/actions/cache
+      - name: Install app dependencies
+        run: yarn --frozen-lockfile
+      - name: Build next.js
+        run: yarn next:build
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install aarch64 dependencies
+        run: rustup target add aarch64-apple-darwin
+      - name: Release tauri x64
+        uses: tauri-apps/tauri-action@dev
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        with:
+          configPath: tauri.conf.prod.json
+          releaseId:  ${{ steps.release-id.outputs.result }}
+          args: --target x86_64-apple-darwin
+      - name: Release tauri aarch64
+        uses: tauri-apps/tauri-action@dev
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        with:
+          configPath: tauri.conf.prod.json
+          releaseId: ${{ steps.release-id.outputs.result }}
+          args: --target aarch64-apple-darwin

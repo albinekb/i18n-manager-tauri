@@ -1,0 +1,41 @@
+name: 'delete-release'
+
+on:
+  delete:
+    tags:
+      - v0.**
+
+jobs:
+  delete-release:
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Delete release
+      id: delete-release
+      uses: actions/github-script@v6
+      env:
+        tag: ${{ github.ref_name }}
+      with:
+        script: |
+          const { data, status } = await github.rest.repos.getReleaseByTag({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            tag: process.env.tag
+          })
+
+          if (status === 404) {
+            core.warning(`Release for tag ${process.env.tag} does not exist`)
+            return
+          }
+
+          const { id: release_id, draft, html_url } = data
+
+          if (!draft) {
+            core.setFailed(`Cannot delete already published release: ${html_url}``)
+            return
+          }
+
+          await github.rest.repos.deleteRelease({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            release_id
+          })

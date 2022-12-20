@@ -1,0 +1,57 @@
+name: 'publish-release'
+
+on:
+  workflow_run:
+    workflows: [build-release]
+    types:
+      - completed
+
+jobs:
+  publish-release:
+    runs-on: ubuntu-20.04
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Get release id
+        uses: actions/github-script@v3
+        id: release-id
+        with:
+          script: |
+            const { status, data } = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            })
+
+            return data.id
+      - name: Verify that files are uploaded
+        id: check-release
+        uses: actions/github-script@v6
+        env:
+          release_id: ${{ steps.release-id.outputs.result }}
+        with:
+          script: |
+            const exts = ['.app.tar.gz.sig', '.app.tar.gz', '.dmg']
+            const archs = ['aarch64', 'x64']
+            const { data: { html_url,  assets } } = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: process.env.release_id
+            })
+            const endings = exts.flatMap(ext => archs.map(a => `${a}${ext}`))
+            const missing = endings.filter(ending => !assets.some(asset => asset.name.endsWith(ending)))
+            if (missing.length) {
+              core.setFailed(`Release ${html_url} does not have required files: ${missing.join(', ')}`)
+            }
+      - name: Publish release
+        id: publish-release
+        uses: actions/github-script@v6
+        env:
+          release_id: ${{ steps.release-id.outputs.result }}
+        with:
+          script: |
+            github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: process.env.release_id,
+              draft: false,
+              prerelease: false
+            })
