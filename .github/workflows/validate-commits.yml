@@ -13,4 +13,4 @@ jobs:
           version: latest
       - name: Verify commit messages
         run: |
-          git log --oneline ${{ github.head_ref }}..${{ github.ref }} | xargs -L1 verify-emoji-commit
+          git log --oneline ${{ github.base_ref }}..${{ github.head_ref }} | xargs -L1 verify-emoji-commit
