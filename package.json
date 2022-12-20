@@ -5,6 +5,7 @@
   "scripts": {
     "next:dev": "next dev -p 1420",
     "next:build": "next build && next export -o dist",
+    "ci:tauri:before-build": "if [[ ! -d \"./dist\" ]]; then echo \"Next.js export does not exists at ./dist\" && exit 1; else echo \"Next.js already built\"; fi",
     "tauri:before-build": "if test \"$CI\" = true; then [ ! -d \"./dist\" ] && yarn next:build || echo \"dist already exists, skipping build\"; else yarn next:build; fi",
     "tauri:setup-config": "node ./scripts/setup-config.js",
     "build": "yarn tauri:setup-config && tauri build --config src-tauri/tauri.conf.prod.json",

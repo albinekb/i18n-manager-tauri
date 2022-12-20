@@ -58,8 +58,7 @@ jobs:
             return data.id
   build-tauri:
     needs: create-release
-    if: ${{ needs.create-release.outputs.releaseId != '' }}
-    continue-on-error: true
+    if: ${{ needs.create-release.result == 'success' && needs.create-release.outputs.releaseId != '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -76,12 +75,14 @@ jobs:
         run: yarn tauri:setup-config
       - name: Setup cache
         uses: ./.github/actions/cache
+      - name: Install app dependencies
+        run: yarn --frozen-lockfile
+      - name: Build next.js
+        run: yarn next:build
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
       - name: Install aarch64 dependencies
         run: rustup target add aarch64-apple-darwin
-      - name: Install app dependencies
-        run: yarn --frozen-lockfile
       - name: Release tauri x64
         uses: tauri-apps/tauri-action@dev
         env:
@@ -108,6 +109,27 @@ jobs:
     needs: [create-release,build-tauri]
     if: ${{ needs.build-tauri.result == 'success' }}
     steps:
+      - name: Verify that files are uploaded
+        id: check-release
+        uses: actions/github-script@v6
+        env:
+          release_id: ${{ needs.create-release.outputs.releaseId }}
+        with:
+          script: |
+            const exts = ['.app.tar.gz.sig', '.app.tar.gz', '.dmg']
+            const archs = ['aarch64', 'x64']
+
+            const { data: { html_url,  assets } } = await github.rest.repos.getRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: process.env.release_id
+            })
+
+            const endings = exts.flatMap(ext => archs.map(a => `${a}${ext}`))
+            const missing = endings.filter(ending => !assets.some(asset => asset.name.endsWith(ending)))
+            if (missing.length) {
+              core.setFailed(`Release ${html_url} does not have required files: ${missing.join(', ')}`)
+            }
       - name: Publish release
         id: publish-release
         uses: actions/github-script@v6
@@ -126,7 +148,7 @@ jobs:
   delete-release:
     runs-on: ubuntu-20.04
     needs: [create-release, build-tauri]
-    if: ${{ needs.build-tauri.result == 'failure' }}
+    if: ${{ needs.build-tauri.result != 'success' }}
     steps:
     - name: Delete release
       id: delete-release
