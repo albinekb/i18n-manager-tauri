@@ -12,7 +12,8 @@
     "tauri": "tauri",
     "dev": "tauri dev",
     "bump": "./scripts/bump-version.sh",
-    "release": "./scripts/sync-release-branch.sh"
+    "release": "./scripts/sync-release-branch.sh",
+    "prepare": "if [[ -z \"$CI\" ]]; then husky install; else echo \"Skipping husky in CI\"; fi"
   },
   "dependencies": {
     "@emotion/cache": "^11.10.5",
@@ -45,6 +46,7 @@
     "@types/react": "^18.0.26",
     "@types/react-dom": "^18.0.9",
     "autoprefixer": "^10.4.13",
+    "husky": "^8.0.2",
     "postcss": "^8.4.20",
     "semver": "^7.3.8",
     "tailwindcss": "^3.2.4",

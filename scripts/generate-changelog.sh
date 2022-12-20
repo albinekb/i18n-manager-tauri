@@ -7,9 +7,9 @@ export PAGER="cat"
 
 last_tag=$(git tag --sort=creatordate | grep -A 1 ^v | tail -n 1)
 log=$(\
-  git log --graph --pretty=format:'%Cred%h%Creset  %s%Creset'\
+  git log --no-merges --pretty=format:'%Cred%h%Creset  %s%Creset'\
   --invert-grep --grep="🚢" --grep="🌹"\
-  refs/tags/${last_tag}..development\
+  refs/tags/${last_tag}..HEAD\
 )
 
 if [[ -z "${log}" ]]; then
