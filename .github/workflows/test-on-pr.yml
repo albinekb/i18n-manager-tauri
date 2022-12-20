@@ -22,10 +22,14 @@ jobs:
           node-version: 18
       - name: Setup cache
         uses: ./.github/actions/cache
-      - name: Build next.js
-        run: yarn next:build
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+      - name: verify commit messages
+        run: |
+          cargo install verify-emoji-commit
+          git log --oneline ${{ github.head_ref }}..${{ github.ref }} | xargs -L1 verify-emoji-commit
+      - name: Build next.js
+        run: yarn next:build
       - name: Install aarch64 dependencies
         run: rustup target add aarch64-apple-darwin
       - name: Install app dependencies
