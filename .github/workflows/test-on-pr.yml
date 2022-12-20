@@ -22,6 +22,8 @@ jobs:
           node-version: 18
       - name: Setup cache
         uses: ./.github/actions/cache
+      - name: Build next.js
+        run: yarn next:build
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
       - name: Install aarch64 dependencies
