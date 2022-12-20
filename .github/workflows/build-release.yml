@@ -1,14 +1,15 @@
 name: 'build-release'
 
 on:
-  workflow_run:
-    workflows: [create-release]
-    types:
-      - completed
+  workflow_call:
+    inputs:
+      releaseId:
+        required: true
+        type: string
+
 
 jobs:
   build-tauri:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
       fail-fast: true
       matrix:
@@ -21,22 +22,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 16
-      - name: Get release id
-        uses: actions/github-script@v3
-        id: release-id
-        with:
-          script: |
-            const { status, data } = await github.rest.repos.getLatestRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            })
-
-            if (!data.draft) {
-              core.setFailed(`Release is not draft: ${data.html_url}`)
-              return
-            }
-
-            return data.id
       - name: Create tauri.conf.prod.json
         run: yarn tauri:setup-config
       - name: Setup cache
@@ -57,7 +42,7 @@ jobs:
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           configPath: tauri.conf.prod.json
-          releaseId:  ${{ steps.release-id.outputs.result }}
+          releaseId:  ${{ inputs.releaseId }}
           args: --target x86_64-apple-darwin
       - name: Release tauri aarch64
         uses: tauri-apps/tauri-action@dev
@@ -67,5 +52,5 @@ jobs:
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           configPath: tauri.conf.prod.json
-          releaseId: ${{ steps.release-id.outputs.result }}
+          releaseId: ${{ inputs.releaseId }}
           args: --target aarch64-apple-darwin

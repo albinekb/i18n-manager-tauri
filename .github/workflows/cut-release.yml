@@ -1,14 +1,20 @@
 name: 'cut-release'
 on:
+  workflow_call:
+    inputs:
+      bump-level:
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       bump-level:
         type: choice
         description: Bump level
         required: true
-        default: none
+        default: auto
         options:
         - none
+        - auto
         - patch
         - minor
         - major
@@ -30,9 +36,8 @@ jobs:
       - name: Bump version (${{ github.event.inputs.bump-level }})
         if: github.event.inputs.bump-level != 'none'
         run: yarn bump ${{ github.event.inputs.bump-level }}
-      - name: Push bumped version
-        if: github.event.inputs.bump-level != 'none'
-        run: git commit -am "Bump version ${{ github.event.inputs.bump-level }}" && git push
-      - run: yarn release
         env:
           TERM: xterm
+      - name: Push bumped version
+        if: github.event.inputs.bump-level != 'none'
+        run: git push && git push --tags

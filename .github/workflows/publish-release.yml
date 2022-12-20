@@ -1,32 +1,23 @@
 name: 'publish-release'
 
 on:
-  workflow_run:
-    workflows: [build-release]
-    types:
-      - completed
+  workflow_call:
+    inputs:
+      releaseId:
+        required: true
+        type: string
 
 jobs:
   publish-release:
     runs-on: ubuntu-20.04
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - name: Get release id
-        uses: actions/github-script@v3
-        id: release-id
-        with:
-          script: |
-            const { status, data } = await github.rest.repos.getLatestRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            })
-
-            return data.id
+      - run: echo "releaseId=${{ inputs.releaseId }}" >> $GITHUB_OUTPUT
+        id: releaseId
       - name: Verify that files are uploaded
         id: check-release
         uses: actions/github-script@v6
         env:
-          release_id: ${{ steps.release-id.outputs.result }}
+          release_id: ${{ steps.releaseId.outputs.releaseId }}
         with:
           script: |
             const exts = ['.app.tar.gz.sig', '.app.tar.gz', '.dmg']
@@ -45,7 +36,7 @@ jobs:
         id: publish-release
         uses: actions/github-script@v6
         env:
-          release_id: ${{ steps.release-id.outputs.result }}
+          release_id: ${{ steps.releaseId.outputs.releaseId }}
         with:
           script: |
             github.rest.repos.updateRelease({
