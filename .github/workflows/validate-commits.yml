@@ -9,23 +9,20 @@ jobs:
   verify-emoji-commit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
       - name: Cache dependencies
         uses: actions/cache@v3
         with:
           path: ~/.npm
-          key: npm-${{ github.workflow }}
-          restore-keys: npm-
+          key: npm-${{ github.workflow }}-v1
+          restore-keys: 
+            npm-${{ github.workflow }}-
+            npm-${{ github.workflow }}
       - name: Install verify-emoji-commit
         uses: baptiste0928/cargo-install@v1
         with:
           crate: verify-emoji-commit
           version: "0.1.0"
-      - run: |
-          mv package.json package.bak
-          npm i execa
+      - run: npm i execa
       - name: Verify pushed commit messages 
         uses: actions/github-script@v6
         env:
