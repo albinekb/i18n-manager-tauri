@@ -24,24 +24,18 @@ jobs:
           crate: verify-emoji-commit
           version: "0.2.0"
       - run: cd ./.github/workflows/.scripts && npm install
+      - name: Get Current Job Log URL
+        uses: Tiryoh/gha-jobid-action@v0
+        id: jobid
+        with:
+          github_token: ${{ secrets.ACTIONS_READ_GITHUB_TOKEN }}
+          job_name: ${{ github.job }}
       - name: Verify pushed commit messages 
         uses: actions/github-script@v6
         with:
           script: |
             const { default: verifyEmojiCommits } = await import('${{ github.workspace }}/.github/workflows/.scripts/verify-emoji-commits.js')
             const ref = '${{ github.base_ref || github.ref  }}'
-            await verifyEmojiCommits({ ref, github, context, core })
-            
-      # const statues = await github.rest.listCommitStatusesForRef({
-      #   owner: context.repo.owner,
-      #   repo: context.repo.repo,
-      #   ref: process.env.COMMITS_REF
-      # })
-   
-      # - name: Verify pushed commit messages
-      #   if: ${{ github.event_name == 'pull_request' }}
-      #   env:
-      #     CLICOLOR_FORCE: true
-      #   run: |
-      #     git fetch origin ${{ github.base_ref }}
-      #     git log --no-merges --skip 0 --oneline origin/${{ github.base_ref }}..HEAD | xargs -L1 verify-emoji-commit
+            const jobUrl = '${{ steps.jobid.outputs.html_url }}'
+        
+            await verifyEmojiCommits({ jobUrl, ref, github, context, core })

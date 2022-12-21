@@ -83,9 +83,13 @@ const verifyCommit = async ({ message, sha }) => {
   }
 }
 
-export default async function ({ ref, github, context, core }) {
-  const jobPath = context.job ? `/jobs/${context.job}` : ''
-  const target_url = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}${jobPath}`
+export default async function ({ ref, jobUrl, github, context, core }) {
+  const target_url =
+    jobUrl &&
+    jobUrl.includes(context.repo.owner) &&
+    jobUrl.includes(context.repo.repo)
+      ? jobUrl
+      : `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
 
   const commits = await collectCommits({ ref, github, context, core })
 
