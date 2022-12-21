@@ -21,7 +21,7 @@ jobs:
         uses: baptiste0928/cargo-install@v1
         with:
           crate: verify-emoji-commit
-          version: "0.1.0"
+          version: "0.1.1"
       - run: npm i execa
       - name: Verify pushed commit messages 
         uses: actions/github-script@v6
@@ -58,7 +58,7 @@ jobs:
               return {
                 sha,
                 state: exitCode === 0 ? 'success' : 'failure',
-                description: exitCode === 0 ? 'Commit message is valid' : 'Commit message is invalid'
+                description: exitCode === 0 ? stdout : stderr
               }
             }
             const results = await Promise.all(commits.map(verifyCommit))
