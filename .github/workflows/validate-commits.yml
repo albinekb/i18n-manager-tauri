@@ -22,7 +22,7 @@ jobs:
         uses: baptiste0928/cargo-install@v1
         with:
           crate: verify-emoji-commit
-          version: "0.1.1"
+          version: "0.2.0"
       - run: cd ./.github/workflows/.scripts && npm install
       - name: Verify pushed commit messages 
         uses: actions/github-script@v6
