@@ -5,7 +5,8 @@ on:
     paths-ignore:
       - '.github/workflows/**'
       - '!.github/workflows/test-on-pr.yml'
-      - 'scripts/**.sh'
+      - 'scripts/**'
+      - '!scripts/setup-config.js'
       - 'README.md'
       - '.husky/**'
 
