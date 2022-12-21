@@ -1,9 +1,12 @@
-name: 'validate-commits'
+name: 'Valid commit messages'
 
-on: [pull_request]
-
+on: 
+  pull_request:
+  push:
+    branches:
+      - 'development'
 jobs:
-  verify-commits:
+  verify-emoji-commit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -14,9 +17,67 @@ jobs:
         with:
           crate: verify-emoji-commit
           version: "0.1.0"
-      - name: Verify commit messages
+      - run: npm i execa
+      - name: Verify pushed commit messages 
+        uses: actions/github-script@v6
         env:
-          CLICOLOR_FORCE: true
-        run: |
-          git fetch origin ${{ github.base_ref }}
-          git log --no-merges --skip 0 --oneline origin/${{ github.base_ref }}..HEAD | xargs -L1 verify-emoji-commit
+          COMMITS_REF: ${{ github.base_ref || github.ref  }}
+        with:
+          script: |
+            const config = { ref:  process.env.COMMITS_REF, before: context?.payload?.before, after: context?.payload?.after } 
+            console.log('config', config)
+            if (!config.before || !config.after) {
+              console.log(JSON.stringify(context, null, 2))
+              throw new Error('No commits to verify')
+              return
+            }
+            const {execa} = await import('${{ github.workspace }}/node_modules/execa/index.js')
+            const jobPath = github.job ? `/jobs/${context.job}` : ''
+            const target_url = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}${jobPath}`
+
+            let {data:commits} = await github.rest.repos.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.COMMITS_REF
+            })
+            const startIndex = Math.max(commits.findIndex(commit => commit.sha === config.before), 0)
+            const endIndex = Math.min(commits.findIndex(commit => commit.sha === config.after) + 1, commits.length - 1)
+            commits = commits.slice(startIndex, endIndex).filter(commit => commit.parents.length <= 1)
+            
+
+            const verifyCommit = async ({commit: {message},sha}) => {
+              const { stdout, stderr, exitCode } = await execa('verify-emoji-commit', [message], {reject:false})
+              
+              return {
+                sha,
+                state: exitCode === 0 ? 'success' : 'failure',
+                description: exitCode === 0 ? 'Commit message is valid' : 'Commit message is invalid'
+              }
+            }
+            const results = await Promise.all(commits.map(verifyCommit))
+
+            console.log('results', results.map((r, index) => ({...r, message: commits[index].commit.message })))
+            
+            await Promise.all(results.map(commit => {
+              return github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                target_url,
+                context: context.workflow,
+                ...commit
+              })
+            }))
+            
+      # const statues = await github.rest.listCommitStatusesForRef({
+      #   owner: context.repo.owner,
+      #   repo: context.repo.repo,
+      #   ref: process.env.COMMITS_REF
+      # })
+   
+      # - name: Verify pushed commit messages
+      #   if: ${{ github.event_name == 'pull_request' }}
+      #   env:
+      #     CLICOLOR_FORCE: true
+      #   run: |
+      #     git fetch origin ${{ github.base_ref }}
+      #     git log --no-merges --skip 0 --oneline origin/${{ github.base_ref }}..HEAD | xargs -L1 verify-emoji-commit
