@@ -9,74 +9,28 @@ jobs:
   verify-emoji-commit:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Cache dependencies
         uses: actions/cache@v3
         with:
           path: ~/.npm
-          key: npm-${{ github.workflow }}-v1
+          key: npm_verify_emoji_commit-${{ hashFiles('.github/workflows/.scripts/package-lock.json') }}
           restore-keys: 
-            npm-${{ github.workflow }}-
-            npm-${{ github.workflow }}
+            npm_verify_emoji_commit-${{ hashFiles('.github/workflows/.scripts/package-lock.json') }}
+            npm_verify_emoji_commit-
       - name: Install verify-emoji-commit
         uses: baptiste0928/cargo-install@v1
         with:
           crate: verify-emoji-commit
           version: "0.1.1"
-      - run: npm i execa
+      - run: cd ./.github/workflows/.scripts && npm install
       - name: Verify pushed commit messages 
         uses: actions/github-script@v6
-        env:
-          COMMITS_REF: ${{ github.base_ref || github.ref  }}
         with:
           script: |
-            const config = { ref:  process.env.COMMITS_REF, before: context?.payload?.before, after: context?.payload?.after } 
-            console.log('config', config)
-            if (!config.before || !config.after) {
-              console.log(JSON.stringify(context, null, 2))
-              throw new Error('No commits to verify')
-              return
-            }
-            const {execa} = await import('${{ github.workspace }}/node_modules/execa/index.js')
-            const jobPath = context.job ? `/jobs/${context.job}` : ''
-            const target_url = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}${jobPath}`
-
-            let {data:commits} = await github.rest.repos.listCommits({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: process.env.COMMITS_REF
-            })
-            console.log(`got ${commits.length} commits from gh api, and ${context?.payload?.commits?.length || 0} from payload`)
-            allCommits = [...(context?.payload?.commits || []), ...commits]
-            uniqueCommits = [...new Set(allCommits.map(commit => commit.sha))].map(sha => allCommits.find(commit => commit.sha === sha))
-            commits = uniqueCommits
-            console.log(commits.length, 'unique commits')
-            const startIndex = Math.max(commits.findIndex(commit => commit.sha === config.before), 0)
-            const endIndex = Math.min(commits.findIndex(commit => commit.sha === config.after) + 1, commits.length - 1)
-            commits = commits.slice(startIndex, endIndex).filter(commit => !commit?.parents?.length || commit.parents.length <= 1)
-            
-
-            const verifyCommit = async ({commit: {message},sha}) => {
-              const { stdout, stderr, exitCode } = await execa('verify-emoji-commit', [message], {reject:false})
-              
-              return {
-                sha,
-                state: exitCode === 0 ? 'success' : 'failure',
-                description: exitCode === 0 ? stdout : stderr
-              }
-            }
-            const results = await Promise.all(commits.map(verifyCommit))
-
-            console.log('results', results.map((r, index) => ({...r, message: commits[index].commit.message })))
-            
-            await Promise.all(results.map(commit => {
-              return github.rest.repos.createCommitStatus({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                target_url,
-                context: context.workflow,
-                ...commit
-              })
-            }))
+            const { default: verifyEmojiCommits } = await import('${{ github.workspace }}/.github/workflows/.scripts/verify-emoji-commits.js')
+            const ref = '${{ github.base_ref || github.ref  }}'
+            await verifyEmojiCommits({ ref, github, context, core })
             
       # const statues = await github.rest.listCommitStatusesForRef({
       #   owner: context.repo.owner,

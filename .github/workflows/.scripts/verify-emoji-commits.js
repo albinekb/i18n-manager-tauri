@@ -1,0 +1,113 @@
+import { execa } from 'execa'
+
+async function collectCommits({ ref, github, context, core }) {
+  const config = {
+    ref,
+    before: context?.payload?.before,
+    after: context?.payload?.after,
+  }
+
+  if (!config.before || !config.after) {
+    console.log(JSON.stringify(context, null, 2))
+    throw new Error('No commits to verify')
+    return
+  }
+
+  const payloadCommits = (context?.payload?.commits || []).map((commit) => ({
+    sha: commit.id,
+    message: commit.message,
+  }))
+
+  if (payloadCommits?.length) {
+    return payloadCommits
+  }
+
+  const { data: apiCommits } = await github.rest.repos.listCommits({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    sha: ref,
+  })
+
+  let commits = []
+
+  if (payloadCommits?.length) {
+    commits = payloadCommits.map((commit) => ({
+      ...commit,
+      ...apiCommits.find((c) => c.sha === commit.id),
+    }))
+  }
+
+  if (!commits.length && apiCommits?.length) {
+    const startIndex = Math.max(
+      apiCommits.findIndex((commit) => commit.sha === config.before),
+      0,
+    )
+    const endIndex = Math.min(
+      apiCommits.findIndex((commit) => commit.sha === config.after) + 1,
+      apiCommits.length - 1,
+    )
+    commits = apiCommits
+      .slice(startIndex, endIndex)
+      .map((commit) => ({ message: commit.commit.message, sha: commit.sha }))
+  }
+
+  if (!commits.length) {
+    throw new Error('No commits to verify')
+  }
+
+  const commitsWithoutMessage = commits.filter((commit) => !commit?.message)
+
+  if (commitsWithoutMessage.length) {
+    console.log('commitsWithoutMessage', commitsWithoutMessage)
+    console.log('apiCommits', apiCommits)
+    console.log('payloadCommits', payloadCommits)
+    throw new Error('Commits without message')
+  }
+
+  return commits.filter(
+    (commit) => !commit?.parents?.length || commit.parents.length <= 1,
+  )
+}
+
+const verifyCommit = async ({ message, sha }) => {
+  const { stdout, stderr, exitCode } = await execa(
+    'verify-emoji-commit',
+    [message],
+    { reject: false },
+  )
+
+  return {
+    sha,
+    state: exitCode === 0 ? 'success' : 'failure',
+    description: exitCode === 0 ? stdout : stderr,
+  }
+}
+
+export default async function ({ ref, github, context, core }) {
+  const jobPath = context.job ? `/jobs/${context.job}` : ''
+  const target_url = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}${jobPath}`
+
+  const commits = await collectCommits({ ref, github, context, core })
+
+  const results = await Promise.all(commits.map(verifyCommit))
+
+  console.log(
+    'results',
+    results.map((r, index) => ({
+      ...r,
+      message: commits[index].message,
+    })),
+  )
+
+  await Promise.all(
+    results.map((commit) => {
+      return github.rest.repos.createCommitStatus({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        target_url,
+        context: context.workflow,
+        ...commit,
+      })
+    }),
+  )
+}
