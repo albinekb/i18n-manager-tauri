@@ -37,7 +37,7 @@ jobs:
               return
             }
             const {execa} = await import('${{ github.workspace }}/node_modules/execa/index.js')
-            const jobPath = github.job ? `/jobs/${context.job}` : ''
+            const jobPath = context.job ? `/jobs/${context.job}` : ''
             const target_url = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}${jobPath}`
 
             let {data:commits} = await github.rest.repos.listCommits({
@@ -45,9 +45,11 @@ jobs:
               repo: context.repo.repo,
               sha: process.env.COMMITS_REF
             })
+            commits = [...(context?.payload?.commits || []), ...commits]
+            commits = [...new Set(commits.map(commit => commit.sha))].map(sha => commits.find(commit => commit.sha === sha))
             const startIndex = Math.max(commits.findIndex(commit => commit.sha === config.before), 0)
             const endIndex = Math.min(commits.findIndex(commit => commit.sha === config.after) + 1, commits.length - 1)
-            commits = commits.slice(startIndex, endIndex).filter(commit => commit.parents.length <= 1)
+            commits = commits.slice(startIndex, endIndex).filter(commit => commit?.parents?.length ? commit?.parents?.length <= 1 : true)
             
 
             const verifyCommit = async ({commit: {message},sha}) => {
