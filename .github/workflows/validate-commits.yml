@@ -45,11 +45,14 @@ jobs:
               repo: context.repo.repo,
               sha: process.env.COMMITS_REF
             })
-            commits = [...(context?.payload?.commits || []), ...commits]
-            commits = [...new Set(commits.map(commit => commit.sha))].map(sha => commits.find(commit => commit.sha === sha))
+            console.log(`got ${commits.length} commits from gh api, and ${context?.payload?.commits?.length || 0} from payload`)
+            allCommits = [...(context?.payload?.commits || []), ...commits]
+            uniqueCommits = [...new Set(allCommits.map(commit => commit.sha))].map(sha => allCommits.find(commit => commit.sha === sha))
+            commits = uniqueCommits
+            console.log(commits.length, 'unique commits')
             const startIndex = Math.max(commits.findIndex(commit => commit.sha === config.before), 0)
             const endIndex = Math.min(commits.findIndex(commit => commit.sha === config.after) + 1, commits.length - 1)
-            commits = commits.slice(startIndex, endIndex).filter(commit => commit?.parents?.length ? commit?.parents?.length <= 1 : true)
+            commits = commits.slice(startIndex, endIndex).filter(commit => !commit?.parents?.length || commit.parents.length <= 1)
             
 
             const verifyCommit = async ({commit: {message},sha}) => {
