@@ -1,4 +1,9 @@
 #!/usr/bin/env sh
+
+if [[ $(git rev-parse -q --verify MERGE_HEAD) ]]; then
+  exit 0
+fi
+
 . "$(dirname -- "$0")/_/husky.sh"
 
 CLICOLOR_FORCE=true verify-emoji-commit "$(cat $1)" > /dev/null
