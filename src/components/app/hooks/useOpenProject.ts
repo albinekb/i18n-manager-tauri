@@ -50,7 +50,7 @@ export default function useOpenProject() {
           )
         )
           .flatMap((found, index) => found)
-          .filter((dir) => dir.name.endsWith('.json'))
+          .filter((dir) => dir?.name?.endsWith('.json'))
 
         if (files.length) {
           openPath(selected)

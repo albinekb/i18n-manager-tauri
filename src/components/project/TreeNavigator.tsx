@@ -363,7 +363,7 @@ export default function TreeNavigator({}: Props) {
       return obj
     }, {} as any)
     const unflattened = flatten.unflatten(obj)
-    const tree = findKeys(unflattened, '', languages)
+    const tree = findKeys(unflattened as any, '', languages)
 
     return tree
 

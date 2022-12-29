@@ -107,7 +107,7 @@ export function getTranslationItems(
     const parsedFiles = getParsedFiles(folder, item.path)
 
     const source = parsedFiles.find(
-      (it) => it.language === payload.sourceLanguage,
+      (it: any) => it.language === payload.sourceLanguage,
     )
 
     // Get the first filled formatted path
@@ -147,7 +147,7 @@ export function getTranslationItems(
       parsedFileIndex < parsedFiles.length;
       parsedFileIndex++
     ) {
-      const currentFile = parsedFiles[parsedFileIndex]
+      const currentFile = parsedFiles[parsedFileIndex] as any
       if (
         !currentFile ||
         !payload.targetLanguages.includes(currentFile.language)

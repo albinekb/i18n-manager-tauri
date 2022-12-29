@@ -159,7 +159,7 @@ const focusKey = (selected: string) => {
 }
 
 export const expandKeys = (selected: string[]) => {
-  const expanded = []
+  const expanded: string[] = []
   for (const key of selected) {
     const nodes = key.split('.')
     if (!nodes?.length || nodes.length === 1) {
