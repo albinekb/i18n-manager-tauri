@@ -7,12 +7,6 @@ async function collectCommits({ ref, github, context, core }) {
     after: context?.payload?.after,
   }
 
-  if (!config.before || !config.after) {
-    console.log(JSON.stringify(context, null, 2))
-    throw new Error('No commits to verify')
-    return
-  }
-
   const payloadCommits = (context?.payload?.commits || []).map((commit) => ({
     sha: commit.id,
     message: commit.message,
@@ -38,6 +32,11 @@ async function collectCommits({ ref, github, context, core }) {
   }
 
   if (!commits.length && apiCommits?.length) {
+    if (!config.before || !config.after) {
+      console.log(JSON.stringify(context, null, 2))
+      throw new Error('No commits to verify')
+    }
+
     const startIndex = Math.max(
       apiCommits.findIndex((commit) => commit.sha === config.before),
       0,
