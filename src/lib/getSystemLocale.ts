@@ -7,6 +7,8 @@ const localeMap = {
   nb: 'no',
 }
 
+type MappedLocaleKey = keyof typeof localeMap
+
 export async function getSystemLocale() {
   if (cached) return cached
   const { invoke } = await import('@tauri-apps/api/tauri')
@@ -15,14 +17,11 @@ export async function getSystemLocale() {
   return locale
 }
 
-export async function findLanguage(
-  languages: string[],
-  locale?: string,
-): Promise<string | null> {
+export function findLanguage(languages: string[], locale: string): string {
   if (!languages.length) {
     throw new Error('No languages provided to findLanguage()')
   }
-  const _locale = locale || (await getSystemLocale())
+  const _locale = locale
   let variants: string[] = [_locale]
   const split = _locale.split('-')
   variants = [split[1], split[0], ...variants].map((variant) =>
@@ -31,8 +30,8 @@ export async function findLanguage(
 
   variants = variants.reduce((acc, variant) => {
     let next: string[] = [...acc]
-    if (localeMap[variant]) {
-      next = [localeMap[variant], variant, ...next]
+    if (localeMap[variant as MappedLocaleKey]) {
+      next = [localeMap[variant as MappedLocaleKey], variant, ...next]
     } else {
       next = [...next, variant]
     }
@@ -58,6 +57,4 @@ export async function findLanguage(
     )
     return languages[0]
   }
-
-  return null
 }

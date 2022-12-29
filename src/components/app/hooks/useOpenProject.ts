@@ -5,8 +5,8 @@ import { readDir, BaseDirectory } from '@tauri-apps/api/fs'
 import { useRouter } from 'next/router'
 
 import { getRecentProjects } from '../../Home/RecentProjects'
-import { getProjectName } from '../../../lib/projectHelpers'
-import uniqBy from 'lodash.uniqBy'
+import { getProjectName } from '../../../lib/project'
+import uniqBy from 'lodash.uniqby'
 
 export default function useOpenProject() {
   const router = useRouter()

@@ -1,4 +1,5 @@
-import type { AppProps } from 'next/app'
+import type { AppProps, AppContext } from 'next/app'
+import App from 'next/app'
 import createEmotionCache from '../lib/createEmotionCache'
 import { CacheProvider } from '@emotion/react'
 import Head from 'next/head'
@@ -17,7 +18,7 @@ interface MyAppProps extends AppProps {
   emotionCache?: typeof clientSideEmotionCache
 }
 // This default export is required in a new `pages/_app.js` file.
-export default function MyApp(props: MyAppProps) {
+function MyApp(props: MyAppProps) {
   const { Component, emotionCache = clientSideEmotionCache, pageProps } = props
   return (
     <CacheProvider value={emotionCache}>
@@ -36,3 +37,11 @@ export default function MyApp(props: MyAppProps) {
     </CacheProvider>
   )
 }
+
+MyApp.getInitialProps = async (appContext: AppContext) => {
+  const appProps = await App.getInitialProps(appContext)
+
+  return { ...appProps }
+}
+
+export default MyApp

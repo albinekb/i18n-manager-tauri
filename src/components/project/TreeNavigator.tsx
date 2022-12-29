@@ -3,7 +3,7 @@ import React, { memo, useEffect, useMemo } from 'react'
 import { TreeItem, TreeView } from '@mui/lab'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import useKeyTree, { findKeys, KeyTree } from './hooks/useKeyTree'
+import { findKeys, KeyTree } from '../../lib/keyTree'
 import {
   IconButton,
   InputAdornment,
@@ -12,13 +12,9 @@ import {
   TextField,
   Toolbar,
 } from '@mui/material'
-import Fuse from 'fuse.js'
-import { useDebounce } from 'usehooks-ts'
 import flatten from 'flat'
 import MiniSearch from 'minisearch'
-import { Project } from './hooks/useProject'
 import { ContextMenu } from '../shared/ContextMenu'
-import { expandKeys, useProjectContext } from '../app/ProjectContext'
 import { useController, useFormContext, useFormState } from 'react-hook-form'
 import dotProp from 'dot-prop'
 import {
@@ -33,6 +29,19 @@ import traverse from 'traverse'
 import sortOn from 'sort-on'
 import StaticBadge from '../shared/StaticBadge'
 import TreeNavigatorToolbar from '../TreeNavigator/TreeNavigatorToolbar'
+import {
+  expandedAtom,
+  expandKeys,
+  keyTreeAtom,
+  projectLanguagesAtom,
+  projectLanguageTreeAtom,
+  searchStringAtom,
+  searchStringAtoms,
+  selectedAtom,
+  selectedKeyAtom,
+} from '../app/atoms'
+import { atom, useAtom, useAtomValue } from 'jotai'
+import { LanguageTree } from '../../lib/project'
 type Props = {}
 
 const RenderTreeForm = ({
@@ -42,7 +51,7 @@ const RenderTreeForm = ({
 }: {
   nodes: KeyTree
   expanded: string[]
-  selected: string
+  selected: string | null
 }) => {
   const formStateDisabled =
     Array.isArray(nodes.children) ||
@@ -62,7 +71,7 @@ const RenderTreeForm = ({
 
   const isParent = Array.isArray(nodes.children)
   const isSelected = selected === nodes.id
-  const count = isParent ? nodes.children.length : null
+  const count = isParent ? nodes?.children?.length : null
 
   return (
     <TreeItem
@@ -127,7 +136,10 @@ const RenderTreeForm = ({
     </TreeItem>
   )
 }
-const flatKeys = (tree: KeyTree[], languages) => {
+const flatKeys = (
+  tree: LanguageTree,
+  languages: string[],
+): Array<{ id: string; key: string; [key: string]: string }> => {
   const regexps = languages.map((lang) => ({
     lang,
     regexp: new RegExp(`\.${lang}$`),
@@ -142,7 +154,9 @@ const flatKeys = (tree: KeyTree[], languages) => {
     return [key, null]
   }
 
-  const keysFlat = Object.entries(flatten(tree, { delimiter: '.' }))
+  const keysFlat = Object.entries(
+    flatten<LanguageTree, [string, any]>(tree, { delimiter: '.' }),
+  )
     .filter(
       ([id, value]) => !id.includes('__leaf') && typeof value === 'string',
     )
@@ -157,11 +171,11 @@ const flatKeys = (tree: KeyTree[], languages) => {
       }
     })
 
-  const uniqueKeys = [...new Set(keysFlat.map((x) => x.path))]
+  const uniqueKeys = [...new Set(keysFlat.map((x) => x.path))].filter(Boolean)
 
-  return uniqueKeys.map((path) => {
-    const values = dotProp.get(tree, path)
-    const translated = languages.reduce((acc, lang) => {
+  return uniqueKeys.map((path: string) => {
+    const values: any = dotProp.get(tree, path)
+    const translated = languages.reduce((acc: any, lang) => {
       const value = values?.[lang]
       if (value) {
         acc[lang] = value
@@ -177,32 +191,32 @@ const flatKeys = (tree: KeyTree[], languages) => {
   })
 }
 
-export default function TreeNavigator({}: Props) {
-  const {
-    project,
-    setSelected,
-    selected,
-    expanded,
-    setExpanded,
-    searchString,
-    setSearchString,
-    debouncedSearchString,
-  } = useProjectContext()
-  const keyTree = useKeyTree(project)
+const keysFlatAtom = atom((get) => {
+  const languageTree = get(projectLanguageTreeAtom)
+  const languages = get(projectLanguagesAtom)
+  if (languageTree) {
+    return flatKeys(languageTree, languages)
+  }
+  return []
+})
 
-  const keysFlat = useMemo(
-    () =>
-      project.languageTree
-        ? flatKeys(project.languageTree, project.languages)
-        : [],
-    [project.languageTree],
-  )
+export default function TreeNavigator({}: Props) {
+  const keysFlat = useAtomValue(keysFlatAtom)
+  const languageTree = useAtomValue(projectLanguageTreeAtom)
+
+  const languages = useAtomValue(projectLanguagesAtom)
+  const debouncedSearchString = useAtomValue(searchStringAtoms.currentValueAtom)
+  const searchString = useAtomValue(searchStringAtoms.debouncedValueAtom)
+  const isSearching = useAtomValue(searchStringAtoms.isDebouncingAtom)
+  const [expanded, setExpanded] = useAtom(expandedAtom)
+  const [selected, setSelected] = useAtom(selectedAtom)
+  const keyTree = useAtomValue(keyTreeAtom)
   // console.log(keysFlat)
 
   const miniSearch = useMemo(() => {
     return new MiniSearch({
-      fields: ['key', ...project.languages],
-      storeFields: ['key', ...project.languages],
+      fields: ['key', ...languages],
+      storeFields: ['key', ...languages],
       // processTerm: (term) => term.toLowerCase(), // index term processing
       // tokenize: (string) => [string], // indexing tokenizer
       // searchOptions: {
@@ -213,7 +227,7 @@ export default function TreeNavigator({}: Props) {
       //   // .split(/[\s-]+/) // search query tokenizer
       // },
     })
-  }, [project.languages])
+  }, [languages])
 
   useEffect(() => {
     miniSearch.removeAll()
@@ -339,17 +353,17 @@ export default function TreeNavigator({}: Props) {
 
     // console.log('json', miniSearch.toJSON())
 
-    const obj = results.reduce((obj, curr) => {
-      for (const lang of project.languages) {
+    const obj = results?.reduce((obj: any, curr) => {
+      for (const lang of languages) {
         const id = `${curr.id}.${lang}`
         obj[id] = curr[lang]
       }
       obj[`${curr.id}.score`] = curr.score
 
       return obj
-    }, {})
+    }, {} as any)
     const unflattened = flatten.unflatten(obj)
-    const tree = findKeys(unflattened, '', project.languages)
+    const tree = findKeys(unflattened, '', languages)
 
     return tree
 
@@ -415,8 +429,6 @@ export default function TreeNavigator({}: Props) {
   //   }
   // }, [results])
 
-  const isSearching = searchString && searchString !== debouncedSearchString
-
   return (
     <div className='flex flex-col w-80 overflow-hidden height-full pt-4 bg-gray-50'>
       <TreeNavigatorToolbar />
@@ -428,9 +440,9 @@ export default function TreeNavigator({}: Props) {
             aria-label='file system navigator'
             defaultCollapseIcon={<ExpandMoreIcon />}
             defaultExpandIcon={<ChevronRightIcon />}
-            onNodeSelect={(e, nodeId) => {
+            onNodeSelect={(e: any, nodeId: string) => {
               const isLeaf = dotProp.get(
-                project.languageTree,
+                languageTree,
                 `${nodeId}.__leaf`,
                 false,
               )
@@ -442,11 +454,13 @@ export default function TreeNavigator({}: Props) {
             expanded={expanded}
             sx={{ flexGrow: 1, overflowY: 'auto' }}
           >
-            <RenderTree
-              keyTree={searched}
-              expanded={expanded}
-              selected={selected}
-            />
+            {searched && (
+              <RenderTree
+                keyTree={searched}
+                expanded={expanded}
+                selected={selected}
+              />
+            )}
           </TreeView>
         )}
       </ContextMenu>
@@ -461,7 +475,7 @@ const RenderTree = memo(function RenderTree({
 }: {
   keyTree: KeyTree[]
   expanded: string[]
-  selected: string
+  selected: string | null
 }) {
   return (
     <>

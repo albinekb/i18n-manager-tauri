@@ -14,8 +14,8 @@ import {
   RadioGroup,
   TextField,
 } from '@mui/material'
-import React, { useCallback, useMemo } from 'react'
-import { TranslationState, useProjectContext } from '../app/ProjectContext'
+import React, { Suspense, useCallback, useMemo } from 'react'
+
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { Stack } from '@mui/system'
 import dotProp from 'dot-prop'
@@ -23,6 +23,13 @@ import { translate } from '../../lib/translate'
 import { getTranslateApiKey } from '../../lib/getTranslateApiKey'
 import axios from 'axios'
 import { useFormContext } from 'react-hook-form'
+import {
+  projectLanguagesAtom,
+  selectedKeyAtom,
+  translationAtom,
+  TranslationState,
+} from '../app/atoms'
+import { useAtom, useAtomValue } from 'jotai'
 
 type Props = {}
 
@@ -36,16 +43,19 @@ export default function TranslateSection({}: Props) {
         <span className='font-semibold'>Translate</span>
       </AccordionSummary>
       <AccordionDetails>
-        <TranslationForm />
+        <Suspense fallback={<CircularProgress />}>
+          <TranslationForm />
+        </Suspense>
       </AccordionDetails>
     </Accordion>
   )
 }
 
 function TranslationForm() {
-  const { selected, translationState, project } = useProjectContext()
+  const selected = useAtomValue(selectedKeyAtom)
+  const languages = useAtomValue(projectLanguagesAtom)
+  const [state, setState] = useAtom(translationAtom)
   const formContext = useFormContext()
-  const [state, setState] = translationState
   const [loading, setLoading] = React.useState(false)
   // const options = useMemo(() => project.languages.map((lang) => ({ id:lang, title: lang })), [project.languages])
   const onSubmit = useCallback(async () => {
@@ -64,7 +74,9 @@ function TranslationForm() {
     }
     try {
       setLoading(true)
-
+      if (!state.fromLanguage) {
+        throw new Error('No from language')
+      }
       for (const to of state.toLanguages) {
         const currentValue = formContext.getValues(`${selected}.${to}`)
         if (currentValue && !state.overwrite) {
@@ -101,17 +113,16 @@ function TranslationForm() {
       <Stack spacing={2}>
         <Autocomplete
           id='fromLanguage'
-          options={project.languages}
+          options={languages}
           value={state.fromLanguage || null}
           multiple={false}
           onChange={(event, newValue) => {
-            setState((state: TranslationState) => ({
-              ...state,
+            setState({
               toLanguages: state.toLanguages.filter(
                 (lang) => lang !== newValue,
               ),
               fromLanguage: newValue as unknown as string,
-            }))
+            })
           }}
           getOptionLabel={(option) => option}
           renderInput={(params) => (
@@ -129,16 +140,13 @@ function TranslationForm() {
           multiple
           clearOnBlur
           id='toLanguages'
-          options={project.languages.filter(
-            (lang) => lang !== state.fromLanguage,
-          )}
+          options={languages.filter((lang) => lang !== state.fromLanguage)}
           value={state.toLanguages || []}
           getOptionLabel={(option) => option}
           onChange={(event, newValue) => {
-            setState((state: TranslationState) => ({
-              ...state,
+            setState({
               toLanguages: newValue,
-            }))
+            })
           }}
           renderInput={(params) => (
             <TextField
@@ -153,10 +161,9 @@ function TranslationForm() {
           <RadioGroup
             value={state.mode}
             onChange={(event) => {
-              setState((state: TranslationState) => ({
-                ...state,
+              setState({
                 mode: event.target.value as unknown as 'all' | 'this',
-              }))
+              })
             }}
           >
             <FormControlLabel
@@ -174,10 +181,9 @@ function TranslationForm() {
             <FormControlLabel
               value={state.overwrite}
               onChange={(event, checked) => {
-                setState((state: TranslationState) => ({
-                  ...state,
+                setState({
                   overwrite: checked,
-                }))
+                })
               }}
               control={<Checkbox />}
               label='Overwrite not empty fields'

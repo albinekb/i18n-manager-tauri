@@ -14,13 +14,20 @@ import {
   Toolbar,
   Tooltip,
 } from '@mui/material'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import React, { useCallback } from 'react'
-import { useProjectContext } from '../app/ProjectContext'
+import {
+  expandedAtom,
+  projectInfoAtom,
+  projectLanguageTreeAtom,
+  searchStringAtoms,
+} from '../app/atoms'
 
 type Props = {}
 
 export default function TreeNavigatorToolbar({}: Props) {
-  const projectContext = useProjectContext()
+  const projectInfo = useAtomValue(projectInfoAtom)
+  if (!projectInfo) return null
   return (
     <Stack direction='column'>
       <div className='px-4 pb-4'>
@@ -40,9 +47,9 @@ export default function TreeNavigatorToolbar({}: Props) {
               direction='row'
               alignItems='center'
               justifyContent='space-between'
-              title={projectContext.project.projectPath}
+              title={projectInfo.projectPath}
             >
-              {projectContext.project.projectName}
+              {projectInfo.projectName}
             </Stack>
           }
           expandIcon={<FoldButton />}
@@ -59,7 +66,9 @@ export default function TreeNavigatorToolbar({}: Props) {
 }
 
 function Search() {
-  const { searchString, setSearchString } = useProjectContext()
+  const setSearchString = useSetAtom(searchStringAtoms.debouncedValueAtom)
+  const searchString = useAtomValue(searchStringAtoms.currentValueAtom)
+
   return (
     <TextField
       value={searchString}
@@ -93,26 +102,27 @@ function Search() {
 }
 
 function FoldButton() {
-  const projectContext = useProjectContext()
+  const languageTree = useAtomValue(projectLanguageTreeAtom)
+  const [expanded, setExpanded] = useAtom(expandedAtom)
   const unfoldAll = useCallback(
     (event) => {
       event.stopPropagation()
       const raf = window.requestAnimationFrame(() => {
-        const keys = Object.keys(projectContext.project.languageTree)
-        projectContext.setExpanded(keys)
+        const keys = Object.keys(languageTree)
+        setExpanded(keys)
       })
       return () => window.cancelAnimationFrame(raf)
     },
-    [projectContext.project.languageTree],
+    [languageTree],
   )
   const foldAll = useCallback((event) => {
     event.stopPropagation()
     const raf = window.requestAnimationFrame(() => {
-      projectContext.setExpanded([])
+      setExpanded([])
     })
     return () => window.cancelAnimationFrame(raf)
   }, [])
-  const hasExpanded = Boolean(projectContext.expanded.length)
+  const hasExpanded = Boolean(expanded.length)
   const foldIcon = hasExpanded ? <UnfoldLess /> : <UnfoldMore />
   return (
     <div className='text-black'>

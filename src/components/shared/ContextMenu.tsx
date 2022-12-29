@@ -26,7 +26,14 @@ import {
   DeleteForever,
 } from '@mui/icons-material'
 import { useFormContext } from 'react-hook-form'
-import { selectKey, useProjectContext } from '../app/ProjectContext'
+import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
+import {
+  addedAtom,
+  contextMenuAtom,
+  deletedAtom,
+  projectLanguagesAtom,
+  selectKeyAtom,
+} from '../app/atoms'
 
 const getData = (
   target,
@@ -51,6 +58,16 @@ const getData = (
   return getData(target.parentNode, lives - 1)
 }
 
+const pushToAddedAtom = atom<null, string>(null, (get, set, key) => {
+  const added = get(addedAtom)
+  set(addedAtom, [...added, key])
+})
+
+const pushToDeletedAtom = atom<null, string>(null, (get, set, key) => {
+  const deleted = get(deletedAtom)
+  set(deletedAtom, [...deleted, key])
+})
+
 export function ContextMenu({
   children,
   className,
@@ -60,14 +77,13 @@ export function ContextMenu({
   className?: string
   style?: React.CSSProperties
 }) {
-  const projectContext = useProjectContext()
+  const selectKey = useSetAtom(selectKeyAtom)
+  const languages = useAtomValue(projectLanguagesAtom)
+  const pushToDeleted = useSetAtom(pushToDeletedAtom)
+  const pushToAdded = useSetAtom(pushToAddedAtom)
   const formContext = useFormContext()
   const [dialog, setDialog] = React.useState<any>(null)
-  const [contextMenu, setContextMenu] = React.useState<{
-    mouseX: number
-    mouseY: number
-    data: any
-  } | null>(null)
+  const [contextMenu, setContextMenu] = useAtom(contextMenuAtom)
 
   const handleContextMenu = React.useCallback((event: React.MouseEvent) => {
     event.preventDefault()
@@ -78,7 +94,7 @@ export function ContextMenu({
     }
     const data = getData(event.target as HTMLElement)
     if (!data) return
-    selectKey(projectContext, data.id)
+    selectKey(data.id)
     setContextMenu({
       mouseX: event.clientX + 2,
       mouseY: event.clientY - 6,
@@ -113,7 +129,7 @@ export function ContextMenu({
     setValue(dataId, undefined, {
       shouldDirty: true,
     })
-    projectContext.setDeleted((edits) => [...edits, dataId])
+    pushToDeleted(dataId)
 
     handleClose()
   }, [dataId])
@@ -125,22 +141,22 @@ export function ContextMenu({
       if (type === 'value') {
         setValue(
           name,
-          projectContext.project.languages.reduce((acc, lang) => {
+          languages.reduce((acc, lang) => {
             acc[lang] = ''
             return acc
           }, {}),
         )
-        projectContext.setAdded((edits) => [...edits, name])
-        selectKey(projectContext, name)
+        pushToAdded(name)
+        selectKey(name)
         closeDialog()
       } else {
         setValue(name, {})
-        projectContext.setAdded((edits) => [...edits, name])
-        selectKey(projectContext, name)
+        pushToAdded(name)
+        selectKey(name)
         closeDialog()
       }
     },
-    [projectContext.project.languages],
+    [languages],
   )
 
   return (

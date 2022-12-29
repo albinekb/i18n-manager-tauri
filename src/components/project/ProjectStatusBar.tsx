@@ -16,23 +16,29 @@ import {
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { useFormContext, useFormState } from 'react-hook-form'
 import traverse from 'traverse'
-import { selectKey, useProjectContext } from '../app/ProjectContext'
-import flatten from 'flat'
-import dotProp from 'dot-prop'
-import { writeFile } from '@tauri-apps/api/fs'
-import { join as pathJoin } from 'path'
 import useSaveProject from './hooks/useSaveProject'
-import { listen, TauriEvent } from '@tauri-apps/api/event'
 import { appWindow } from '@tauri-apps/api/window'
 import { confirm } from '@tauri-apps/api/dialog'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import {
+  addedAtom,
+  deletedAtom,
+  projectLanguagesAtom,
+  selectedKeyAtom,
+  selectKeyAtom,
+} from '../app/atoms'
 type Props = {}
 
 export default function ProjectStatusBar({}: Props) {
-  const projectContext = useProjectContext()
+  const languages = useAtomValue(projectLanguagesAtom)
+
+  const [deleted, setDeleted] = useAtom(deletedAtom)
+  const [added, setAdded] = useAtom(addedAtom)
+
   const { isDirty } = useFormState()
-  const { formState, getValues, reset: resetForm } = useFormContext()
+  const { formState, reset: resetForm } = useFormContext()
   const { saveProject, isSaving } = useSaveProject()
-  const languages = projectContext.project.languages
+
   useEffect(() => {
     const listener = appWindow.onCloseRequested(async (event) => {
       console.log(`Got error in window ${event.windowLabel}`)
@@ -53,16 +59,16 @@ export default function ProjectStatusBar({}: Props) {
     () =>
       traverse(formState.dirtyFields).reduce(
         function (
-          [fields, keys, added, deleted]: [
+          [fields, keys, addedCount, deletedCount]: [
             Set<string>,
             Set<string>,
             number,
             number,
           ],
-          val,
+          val: any,
         ) {
-          if (projectContext.deleted.includes(this.path.join('.'))) {
-            return [fields, keys, added, deleted]
+          if (deleted.includes(this.path.join('.'))) {
+            return [fields, keys, addedCount, deletedCount]
           }
           if (
             !this.isLeaf &&
@@ -76,17 +82,12 @@ export default function ProjectStatusBar({}: Props) {
             fields.add(this.path.join('.'))
           }
 
-          return [fields, keys, added, deleted]
+          return [fields, keys, addedCount, deletedCount]
         },
-        [
-          new Set(),
-          new Set(),
-          projectContext.added.length,
-          projectContext.deleted.length,
-        ],
+        [new Set(), new Set(), added.length, deleted.length],
       ),
     // .map((val) => val?.size || val || 0),
-    [formState, languages, projectContext.added, projectContext.deleted],
+    [formState, languages, added, deleted],
   )
 
   return (
@@ -117,8 +118,8 @@ export default function ProjectStatusBar({}: Props) {
             </Button>
             <Button
               onClick={() => {
-                projectContext.setAdded([])
-                projectContext.setDeleted([])
+                setAdded([])
+                setDeleted([])
                 resetForm()
               }}
               disabled={isSaving}
@@ -190,8 +191,8 @@ function DirtyList({
   keys: Set<string>
   getKey?: (node: string) => string
 }) {
-  const form = useFormContext()
-  const projectContext = useProjectContext()
+  const selected = useAtomValue(selectedKeyAtom)
+  const selectKey = useSetAtom(selectKeyAtom)
   const [anchorEl, setAnchorEl] = React.useState<Element | null>(null)
   const handleOpen = useCallback((e) => setAnchorEl(e.currentTarget), [])
   const handleClose = useCallback(() => setAnchorEl(null), [])
@@ -222,9 +223,9 @@ function DirtyList({
             const key = getKey ? getKey(field) : field
             return (
               <ListItemButton
-                selected={projectContext.selected === key}
+                selected={selected === key}
                 onClick={() => {
-                  selectKey(projectContext, key)
+                  selectKey(key)
                   handleClose()
                 }}
                 key={field}
