@@ -37,7 +37,6 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.40.0",
-    "react-tracked": "^1.7.10",
     "sort-on": "^5.2.0",
     "tauri-plugin-store-api": "github:tauri-apps/tauri-plugin-store#9bd993a",
     "traverse": "^0.6.7",
