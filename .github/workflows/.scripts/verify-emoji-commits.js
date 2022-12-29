@@ -29,6 +29,17 @@ async function collectCommits({ ref, github, context, core }) {
       ...commit,
       ...apiCommits.find((c) => c.sha === commit.id),
     }))
+  } else if (context?.payload?.pull_request?._links?.commits?.href) {
+    const { data: prCommits } = await github.request(
+      context.payload.pull_request._links.commits.href,
+    )
+
+    if (prCommits?.length) {
+      commits = prCommits.map((commit) => ({
+        sha: commit.sha,
+        message: commit.commit.message,
+      }))
+    }
   }
 
   if (!commits.length && apiCommits?.length) {
