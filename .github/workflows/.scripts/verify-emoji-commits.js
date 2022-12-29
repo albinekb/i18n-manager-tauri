@@ -36,6 +36,11 @@ async function collectCommits({ ref, github, context, core }) {
       console.log(JSON.stringify(context, null, 2))
       throw new Error('No commits to verify')
     }
+    console.log(
+      JSON.stringify(config, null, 2),
+      '__CONTEXT__',
+      JSON.stringify(context, null, 2),
+    )
 
     const startIndex = Math.max(
       apiCommits.findIndex((commit) => commit.sha === config.before),

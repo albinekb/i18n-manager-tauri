@@ -35,7 +35,8 @@ jobs:
         with:
           script: |
             const { default: verifyEmojiCommits } = await import('${{ github.workspace }}/.github/workflows/.scripts/verify-emoji-commits.js')
-            const ref = '${{ github.base_ref || github.ref  }}'
+            const ref = '${{ github.head_ref || github.base_ref || github.ref }}'
+            console.log('ref', ref)
             const jobUrl = '${{ steps.jobid.outputs.html_url }}'
         
             await verifyEmojiCommits({ jobUrl, ref, github, context, core })
