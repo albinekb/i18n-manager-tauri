@@ -214,6 +214,24 @@ const focusKey = (selected: string) => {
 }
 
 export const expandKeys = (selected: string[]) => {
+  return [...new Set([...selected])].sort((a, b) => {
+    // sort by depth
+    const aDepth = a.split('.').length
+    const bDepth = b.split('.').length
+    if (aDepth > bDepth) return 1
+    if (aDepth < bDepth) return -1
+
+    // sort by length
+    if (a.length > b.length) return 1
+    if (a.length < b.length) return -1
+
+    // sort by name
+    if (a > b) return 1
+    if (a < b) return -1
+
+    return 0
+  })
+
   const expanded: string[] = []
   for (const key of selected) {
     const nodes = key.split('.')

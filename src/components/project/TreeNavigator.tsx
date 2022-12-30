@@ -44,98 +44,113 @@ import { useAtom, useAtomValue } from 'jotai/react'
 import { LanguageTree } from '../../lib/project'
 type Props = {}
 
-const RenderTreeForm = ({
-  nodes,
-  expanded,
-  selected,
-}: {
-  nodes: KeyTree
-  expanded: string[]
-  selected: string | null
-}) => {
-  const formStateDisabled =
-    Array.isArray(nodes.children) ||
-    !nodes.parent ||
-    !expanded.includes(nodes.parent)
+const RenderTreeForm = memo(
+  function RenderTreeForm({
+    nodes,
+    expanded,
+    selected,
+  }: {
+    nodes: KeyTree
+    expanded: string[] | null
+    selected: string | null
+  }) {
+    const formStateDisabled =
+      Array.isArray(nodes.children) ||
+      !nodes.parent ||
+      !expanded?.includes(nodes.parent)
 
-  const { isDirty } = formStateDisabled
-    ? { isDirty: false }
-    : useFormContext().getFieldState(nodes.id)
-  // const { dirtyFields } = useFormState({
-  //   control,
-  //   name: nodes.id,
-  // })
-  // const isDirty = dotProp.get(dirtyFields, nodes.id, false)
+    const { isDirty } = formStateDisabled
+      ? { isDirty: false }
+      : useFormContext().getFieldState(nodes.id)
+    // const { dirtyFields } = useFormState({
+    //   control,
+    //   name: nodes.id,
+    // })
+    // const isDirty = dotProp.get(dirtyFields, nodes.id, false)
 
-  // console.log('dirtyFields', dirtyFields)
+    // console.log('dirtyFields', dirtyFields)
 
-  const isParent = Array.isArray(nodes.children)
-  const isSelected = selected === nodes.id
-  const count = isParent ? nodes?.children?.length : null
+    const isParent = Array.isArray(nodes.children)
+    const isSelected = selected === nodes.id
+    const count = isParent ? nodes?.children?.length : null
+    const childExpanded = useMemo(() => {
+      if (!isParent) return null
+      const filtered = expanded?.filter((key) => key.startsWith(nodes.id))
+      return filtered?.length ? filtered : null
+    }, [expanded, nodes.id])
 
-  return (
-    <TreeItem
-      key={nodes.id}
-      nodeId={nodes.id}
-      label={
-        <Stack
-          direction='row'
-          alignItems='center'
-          justifyContent='space-between'
-          className='h-10'
-        >
-          <span
-            className={clsx(
-              isDirty && 'font-semibold',
-              'font-weight-[inherit]',
-            )}
-            style={
-              nodes?.score
-                ? { backgroundColor: `rgba(0,255,0,${nodes.score / 100})` }
-                : undefined
-            }
+    return (
+      <TreeItem
+        key={nodes.id}
+        nodeId={nodes.id}
+        label={
+          <Stack
+            direction='row'
+            alignItems='center'
+            justifyContent='space-between'
+            className='h-10'
           >
-            {nodes.name}
-          </span>
-          {count && <StaticBadge badgeContent={count} color='primary' />}
-          {isDirty && <WarningOutlined fontSize='small' />}
-        </Stack>
-      }
-      // classes={
-      //   matches.includes(nodes.name)
-      //     ? { label: 'underline font-bold' }
-      //     : undefined
-      // }
-      data-id={nodes.id}
-      data-type={isParent ? 'parent' : 'value'}
-      endIcon={isParent ? <ExpandMoreIcon /> : undefined}
-      // className={clsx(isSelected && 'bg-gray-100')}
-      classes={
-        isSelected
-          ? { expanded: 'font-extralight', iconContainer: 'text-2xl' }
-          : {
-              focused: 'bg-transparent',
-              selected: 'bg-transparent',
-              expanded: 'font-extralight',
-              iconContainer: 'text-2xl',
-            }
-      }
-    >
-      {Array.isArray(nodes.children)
-        ? nodes.children.map((node) =>
-            node ? (
-              <RenderTreeForm
-                key={node.id}
-                nodes={node}
-                expanded={expanded}
-                selected={selected}
-              />
-            ) : null,
-          )
-        : null}
-    </TreeItem>
-  )
-}
+            <span
+              className={clsx(
+                isDirty && 'font-semibold',
+                'font-weight-[inherit]',
+              )}
+              style={
+                nodes?.score
+                  ? { backgroundColor: `rgba(0,255,0,${nodes.score / 100})` }
+                  : undefined
+              }
+            >
+              {nodes.name}
+            </span>
+            {count && <StaticBadge badgeContent={count} color='primary' />}
+            {isDirty && <WarningOutlined fontSize='small' />}
+          </Stack>
+        }
+        // classes={
+        //   matches.includes(nodes.name)
+        //     ? { label: 'underline font-bold' }
+        //     : undefined
+        // }
+        data-id={nodes.id}
+        data-type={isParent ? 'parent' : 'value'}
+        endIcon={isParent ? <ExpandMoreIcon /> : undefined}
+        // className={clsx(isSelected && 'bg-gray-100')}
+        classes={
+          isSelected
+            ? { expanded: 'font-extralight', iconContainer: 'text-2xl' }
+            : {
+                focused: 'bg-transparent',
+                selected: 'bg-transparent',
+                expanded: 'font-extralight',
+                iconContainer: 'text-2xl',
+              }
+        }
+      >
+        {isParent
+          ? nodes?.children?.map((node) =>
+              node ? (
+                <RenderTreeForm
+                  key={node.id}
+                  nodes={node}
+                  expanded={childExpanded}
+                  selected={selected}
+                />
+              ) : null,
+            )
+          : null}
+      </TreeItem>
+    )
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.nodes.id === nextProps.nodes.id &&
+      (prevProps.expanded === nextProps.expanded ||
+        prevProps.expanded?.length === nextProps.expanded?.length) &&
+      prevProps.selected === nextProps.selected
+    )
+  },
+)
 const flatKeys = (
   tree: LanguageTree,
   languages: string[],
@@ -450,7 +465,9 @@ export default function TreeNavigator({}: Props) {
                 setSelected(nodeId)
               }
             }}
-            onNodeToggle={(e, nodeId) => setExpanded(nodeId)}
+            onNodeToggle={(e, nodeIds: string[]) =>
+              setExpanded(expandKeys(nodeIds))
+            }
             expanded={expanded}
             sx={{ flexGrow: 1, overflowY: 'auto' }}
           >
@@ -468,7 +485,7 @@ export default function TreeNavigator({}: Props) {
   )
 }
 
-const RenderTree = memo(function RenderTree({
+function RenderTree({
   keyTree,
   expanded,
   selected,
@@ -483,10 +500,10 @@ const RenderTree = memo(function RenderTree({
         <RenderTreeForm
           key={tree.id}
           nodes={tree}
-          expanded={expanded}
+          expanded={expanded.filter((id) => id.startsWith(tree.id))}
           selected={selected}
         />
       )) || null}
     </>
   )
-})
+}
