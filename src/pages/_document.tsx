@@ -12,6 +12,9 @@ export default class MyDocument extends Document {
         // className={font.className}
       >
         <Head>
+          {process.env.NODE_ENV === 'development' && (
+            <script src='http://localhost:8097'></script>
+          )}
           {/* PWA primary color */}
           <meta name='theme-color' content={theme.palette.primary.main} />
           <link rel='shortcut icon' href='/favicon.ico' />
