@@ -9,7 +9,7 @@ on:
       tag:
         description: "The tag for this release"
         value: ${{ jobs.create-release.outputs.tag }}
-        
+
 
 jobs:
   create-release:
@@ -53,7 +53,7 @@ jobs:
               repo: context.repo.repo,
             })
             const release = releses.find(r => r.tag_name === process.env.TAG)
-            if (found) {
+            if (release) {
               const  { id, draft, html_url } = release
 
               if (!draft) {
