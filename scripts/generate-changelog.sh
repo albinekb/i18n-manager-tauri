@@ -1,10 +1,7 @@
 #!/bin/bash
-if [[ ! -z ${CI} ]]; then
-  set -euo pipefail
-fi
+set -euo pipefail
 IFS=$'\n\t'
-export PAGER="cat"
-
+PAGER="cat"
 last_tag=$(git tag --sort=creatordate | grep -A 1 ^v | tail -n 1)
 
 
@@ -14,6 +11,13 @@ log=$(\
   --invert-grep --grep="🚢" --grep="🌹"\
   refs/tags/${last_tag}..HEAD\
 )
+
+if [ ! -z "${BASH_ARGV+x}" ]; then
+  if [[ "${BASH_ARGV[0]}" == "--skip-check" ]]; then
+    echo "${log}"
+    exit 0
+  fi
+fi
 
 command="require('./package.json').version === \"${last_tag}\".replace('v','')"
 package_version_released=$(node -p $command)

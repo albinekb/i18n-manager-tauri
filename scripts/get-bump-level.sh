@@ -5,7 +5,7 @@ IFS=$'\n\t'
 bold=$(tput bold)
 normal=$(tput sgr0)
 
-log=$(./scripts/generate-changelog.sh)
+log=$(./scripts/generate-changelog.sh --skip-check)
 
 if [[ -z "${log}" ]]; then
   echo "No log found, exiting.."
