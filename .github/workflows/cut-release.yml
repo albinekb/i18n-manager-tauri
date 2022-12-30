@@ -18,6 +18,11 @@ on:
         - patch
         - minor
         - major
+      should-release:
+        type: boolean
+        description: Run release-app workflow
+        required: false
+        default: true
 jobs:
   cut-release:
     if: github.ref_name == 'development'
@@ -45,3 +50,8 @@ jobs:
       - name: Push bumped version
         if: github.event.inputs.bump-level != 'none'
         run: git push && git push --tags
+  release-app:
+    if: github.event.inputs.should-release == true
+    needs: cut-release
+    uses: ./.github/workflows/release-app.yml
+    secrets: inherit
