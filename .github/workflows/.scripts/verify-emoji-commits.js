@@ -12,10 +12,6 @@ async function collectCommits({ ref, github, context, core }) {
     message: commit.message,
   }))
 
-  if (payloadCommits?.length) {
-    return payloadCommits
-  }
-
   const { data: apiCommits } = await github.rest.repos.listCommits({
     owner: context.repo.owner,
     repo: context.repo.repo,
@@ -27,7 +23,7 @@ async function collectCommits({ ref, github, context, core }) {
   if (payloadCommits?.length) {
     commits = payloadCommits.map((commit) => ({
       ...commit,
-      ...apiCommits.find((c) => c.sha === commit.id),
+      ...apiCommits.find((c) => c.sha === commit.sha),
     }))
   } else if (context?.payload?.pull_request?._links?.commits?.href) {
     const { data: prCommits } = await github.request(
