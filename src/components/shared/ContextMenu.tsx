@@ -114,7 +114,7 @@ export function ContextMenu({
 
   const { resetField, setValue } = formContext
   const dataId = contextMenu?.data?.id || dialog?.data?.id
-  console.log('dataId', dataId)
+
   const handleDelete = React.useCallback(() => {
     resetField(dataId, {
       defaultValue: undefined,

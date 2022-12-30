@@ -35,7 +35,6 @@ import {
   keyTreeAtom,
   projectLanguagesAtom,
   projectLanguageTreeAtom,
-  searchStringAtom,
   searchStringAtoms,
   selectedAtom,
   selectedKeyAtom,

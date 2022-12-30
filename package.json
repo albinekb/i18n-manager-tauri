@@ -13,7 +13,8 @@
     "dev": "tauri dev",
     "bump": "./scripts/bump-version.sh",
     "release": "./scripts/sync-release-branch.sh",
-    "prepare": "if [[ -z \"$CI\" ]]; then husky install; else echo \"Skipping husky in CI\"; fi"
+    "prepare": "if [[ -z \"$CI\" ]]; then husky install; else echo \"Skipping husky in CI\"; fi",
+    "postinstall": "cd ./node_modules/jotai-cache/ && [ ! -d \"./dist\" ] && yarn && yarn compile && rm -rf ./node_modules || echo \"jotai-cache already compiled\""
   },
   "dependencies": {
     "@emotion/cache": "^11.10.5",
@@ -30,10 +31,11 @@
     "flat": "^5.0.2",
     "fuse.js": "^6.6.2",
     "jotai": "^1.12.0",
-    "jotai-optics": "^0.2.0",
+    "jotai-cache": "github:jotai-labs/jotai-cache#jotai-new-async-api",
     "lodash.uniqby": "^4.7.0",
     "minisearch": "^6.0.0",
     "next": "13",
+    "p-memoize": "^7.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.41.2",

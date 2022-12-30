@@ -5,7 +5,7 @@ import atomWithDebounce from '../../lib/atomWithDebounce'
 import { findLanguage, getSystemLocale } from '../../lib/getSystemLocale'
 import { getProjectName } from '../../lib/project'
 import { KeyTree } from '../../lib/keyTree'
-
+import { atomWithCache } from 'jotai-cache'
 import {
   getLanguageTree,
   getProjectLanguageFiles,
@@ -17,6 +17,7 @@ import {
   TauriAsyncStorage,
 } from '../../lib/TauriAsyncStorage'
 import uniqBy from 'lodash.uniqby'
+import { defaultCacheOptions } from '../../lib/atoms/helpers'
 
 export const cacheStorage = new TauriAsyncStorage('.cache.dat')
 
@@ -67,12 +68,12 @@ const systemLocaleAtom = atom<Promise<string>>(getSystemLocale)
 
 export const projectPathAtom = atom<string | null>(null)
 
-const projectNameAtom = atom<Promise<string | null> | string>(async (get) => {
+const projectNameAtom = atomWithCache(async (get) => {
   const projectPath = get(projectPathAtom)
   if (!projectPath) return null
   const projectName = await getProjectName(projectPath)
   return projectName
-})
+}, defaultCacheOptions)
 
 export const projectInfoAtom = atom<
   Promise<ProjectInfo | null> | null | ProjectInfo,
@@ -201,7 +202,6 @@ export const addedAtom = atom<string[]>([])
 export const deletedAtom = atom<string[]>([])
 export const expandedAtom = atom<string[]>([])
 export const searchStringAtoms = atomWithDebounce('', 300)
-export const searchStringAtom = searchStringAtoms.currentValueAtom
 
 const focusKey = (selected: string) => {
   const key = document.querySelector(`[data-id="${selected}"]`)

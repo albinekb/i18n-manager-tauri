@@ -5,8 +5,9 @@ import dotProp from 'dot-prop'
 import path from 'path'
 
 import { invoke } from '@tauri-apps/api/tauri'
+import pMemoize from 'p-memoize'
 
-export async function getProjectPackageJson(
+async function getProjectPackageJson(
   projectPath: string,
 ): Promise<{ name: string } | null> {
   const foldersToCheck = [
@@ -24,12 +25,14 @@ export async function getProjectPackageJson(
       return packageJson
     }
   }
-  return null
+  throw new Error('No package.json found in project folder')
 }
 
+const memoizedGetProjectPackageJson = pMemoize(getProjectPackageJson)
+
 export async function getProjectName(projectPath: string): Promise<string> {
-  const packageJson = await getProjectPackageJson(projectPath)
-  if (packageJson) {
+  const packageJson = await memoizedGetProjectPackageJson(projectPath)
+  if (packageJson?.name) {
     return packageJson.name
   }
   return projectPath.split('/').pop() || projectPath || ''

@@ -67,7 +67,6 @@ function FormSyncLoader() {
   const formContext = useFormContext()
   const added = useAtomValue(addedAtom)
   const deleted = useAtomValue(deletedAtom)
-  const data = useAtomValue(projectDataAtom)
   const languages = useAtomValue(projectLanguagesAtom)
   const languageTree = useAtomValue(projectLanguageTreeAtom)
   const isEmptyLanguageTree = '__empty' in languageTree
