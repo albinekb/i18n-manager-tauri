@@ -35,8 +35,8 @@ import {
   deletedAtom,
   projectLanguagesAtom,
   selectKeyAtom,
-} from '../app/atoms'
-import { usePushToAtom } from '../app/hooks/usePushToAtom'
+} from '../../store/atoms'
+import { usePushToAtom } from '../../lib/atoms/hooks/usePushToAtom'
 
 const getData = (
   target,

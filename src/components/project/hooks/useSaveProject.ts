@@ -12,7 +12,7 @@ import {
   projectLangFiles,
   projectLanguagesAtom,
   selectedAtom,
-} from '../../app/atoms'
+} from '../../../store/atoms'
 
 export default function useSaveProject() {
   const { getValues } = useFormContext()

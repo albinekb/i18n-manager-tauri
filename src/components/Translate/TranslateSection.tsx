@@ -28,7 +28,7 @@ import {
   selectedKeyAtom,
   translationAtom,
   TranslationState,
-} from '../app/atoms'
+} from '../../store/atoms'
 import { useAtom, useAtomValue } from 'jotai/react'
 
 type Props = {}

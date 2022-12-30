@@ -21,11 +21,13 @@ const ProjectContextProvider = dynamic(
 )
 
 export default function Project() {
-  const path =
-    (useRouter().query.path as string) ||
-    (typeof window !== 'undefined'
-      ? (new URLSearchParams(window.location.search).get('path') as string)
-      : null)
+  const router = useRouter()
+  const path = router.isReady
+    ? (router.query.path as string) ||
+      (typeof window !== 'undefined'
+        ? (new URLSearchParams(window.location.search).get('path') as string)
+        : null)
+    : null
 
   if (!path) return null
 

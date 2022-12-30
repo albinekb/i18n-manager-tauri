@@ -1,7 +1,6 @@
 import { unstable_NO_STORAGE_VALUE, atomWithStorage } from 'jotai/vanilla/utils'
 import { AsyncStorage } from 'jotai/vanilla/utils/atomWithStorage'
 import type { Store } from 'tauri-plugin-store-api'
-import { JSONValue } from './types'
 
 const stores = new Map<string, Store>()
 

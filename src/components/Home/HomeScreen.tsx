@@ -4,7 +4,7 @@ import { Button, Stack } from '@mui/material'
 import useOpenProject from '../app/hooks/useOpenProject'
 import RecentProjects from './RecentProjects'
 import { useAtomValue } from 'jotai/react'
-import { recentProjectsAtom } from '../app/atoms'
+import { recentProjectsAtom } from '../../store/atoms'
 
 const Preloader = () => {
   useAtomValue(recentProjectsAtom) // Trigger the "onMount" function that will load the data from the store

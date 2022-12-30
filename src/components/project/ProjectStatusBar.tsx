@@ -26,7 +26,7 @@ import {
   projectLanguagesAtom,
   selectedKeyAtom,
   selectKeyAtom,
-} from '../app/atoms'
+} from '../../store/atoms'
 type Props = {}
 
 export default function ProjectStatusBar({}: Props) {

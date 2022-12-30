@@ -7,7 +7,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import theme from '../lib/theme'
 import '../styles/globals.css'
-import AppEventContext from '../components/app/AppEventContext'
+import TauriAppEventsListener from '../components/app/TauriAppEventsListener'
 
 import { StyledEngineProvider } from '@mui/material/styles'
 
@@ -29,19 +29,19 @@ function MyApp(props: MyAppProps) {
         <ThemeProvider theme={theme}>
           {/* CssBaseline kickstart an elegant, consistent, and simple baseline to build upon. */}
           <CssBaseline />
-          <AppEventContext>
-            <Component {...pageProps} />
-          </AppEventContext>
+          <TauriAppEventsListener />
+          <Component {...pageProps} />
         </ThemeProvider>
       </StyledEngineProvider>
     </CacheProvider>
   )
 }
 
-MyApp.getInitialProps = async (appContext: AppContext) => {
-  const appProps = await App.getInitialProps(appContext)
+// // Opt out of automatic static optimization.
+// MyApp.getInitialProps = async (appContext: AppContext) => {
+//   const appProps = await App.getInitialProps(appContext)
 
-  return { ...appProps }
-}
+//   return { ...appProps }
+// }
 
 export default MyApp

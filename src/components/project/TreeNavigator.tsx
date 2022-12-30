@@ -38,7 +38,7 @@ import {
   searchStringAtoms,
   selectedAtom,
   selectedKeyAtom,
-} from '../app/atoms'
+} from '../../store/atoms'
 import { atom } from 'jotai/vanilla'
 import { useAtom, useAtomValue } from 'jotai/react'
 import { LanguageTree } from '../../lib/project'
@@ -57,7 +57,7 @@ const RenderTreeForm = memo(
     const formStateDisabled =
       Array.isArray(nodes.children) ||
       !nodes.parent ||
-      !expanded?.includes(nodes.parent)
+      (expanded && !expanded.includes(nodes.parent))
 
     const { isDirty } = formStateDisabled
       ? { isDirty: false }

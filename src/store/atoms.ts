@@ -1,23 +1,23 @@
 import { readTextFile } from '@tauri-apps/api/fs'
 import { atom, Setter } from 'jotai/vanilla'
 
-import atomWithDebounce from '../../lib/atomWithDebounce'
-import { findLanguage, getSystemLocale } from '../../lib/getSystemLocale'
-import { getProjectName } from '../../lib/project'
-import { KeyTree } from '../../lib/keyTree'
+import atomWithDebounce from '../lib/atomWithDebounce'
+import { findLanguage, getSystemLocale } from '../lib/getSystemLocale'
+import { getProjectName } from '../lib/project'
+import { KeyTree } from '../lib/keyTree'
 import { atomWithCache } from 'jotai-cache'
 import {
   getLanguageTree,
   getProjectLanguageFiles,
   LanguageTree,
   LangFile,
-} from '../../lib/project'
+} from '../lib/project'
 import {
   atomWithTauriStorage,
   TauriAsyncStorage,
-} from '../../lib/TauriAsyncStorage'
+} from '../lib/atoms/TauriAsyncStorage'
 import uniqBy from 'lodash.uniqby'
-import { defaultCacheOptions } from '../../lib/atoms/helpers'
+import { defaultCacheOptions } from '../lib/atoms/helpers'
 
 export const cacheStorage = new TauriAsyncStorage('.cache.dat')
 

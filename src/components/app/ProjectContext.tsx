@@ -12,7 +12,7 @@ import {
   projectPathAtom,
   projectInfoAtom,
   projectLangFiles,
-} from './atoms'
+} from '../../store/atoms'
 
 import { buildKeyTree } from '../../lib/keyTree'
 import { CircularProgress } from '@mui/material'

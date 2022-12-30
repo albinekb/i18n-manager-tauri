@@ -7,10 +7,7 @@ import createEmotionCache from '../lib/createEmotionCache'
 export default class MyDocument extends Document {
   render() {
     return (
-      <Html
-        lang='en'
-        // className={font.className}
-      >
+      <Html lang='en'>
         <Head>
           {process.env.NODE_ENV === 'development' && (
             <script src='http://localhost:8097'></script>

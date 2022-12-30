@@ -21,7 +21,7 @@ import {
   projectInfoAtom,
   projectLanguageTreeAtom,
   searchStringAtoms,
-} from '../app/atoms'
+} from '../../store/atoms'
 
 type Props = {}
 

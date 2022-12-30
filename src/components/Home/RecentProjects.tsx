@@ -9,7 +9,7 @@ import {
 import { ChevronRight } from '@mui/icons-material'
 import useOpenProject from '../app/hooks/useOpenProject'
 import { useAtomValue } from 'jotai/react'
-import { recentProjectsAtom } from '../app/atoms'
+import { recentProjectsAtom } from '../../store/atoms'
 
 export default function RecentProjects() {
   const { openPath } = useOpenProject()
