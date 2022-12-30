@@ -68,23 +68,46 @@ jobs:
             }
       - name: Get changelog
         id: 'get-changelog'
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         env:
           TAG: ${{ steps.get-tag.outputs.tag }}
         with:
           script: |
               const { owner, repo } = context.repo
               const ref = `tags/${process.env.TAG}`
-              const { data: { object: { sha: tag_sha } } } = await github.rest.git.getRef({
+              const { data: { object: { sha, type } } } = await github.rest.git.getRef({
                 owner,
                 repo,
                 ref,
               })
 
-              const { data: { message } } = await .rest.git.getTag({
+              if (type !== 'tag') {
+                if (type !== 'commit') {
+                  throw new Error(`Unexpected type ${type} for ${ref}`)
+                }
+
+                const { data: { message } } = await github.rest.git.getCommit({
+                  owner,
+                  repo,
+                  commit_sha: sha,
+                })
+
+                const changelog = message.trim().replace(/^🚢.+/, '').replace(/^(\n)+/,'')
+              
+                if (!changelog) {
+                  core.setFailed(`Did not find changelog for ${ref}`)
+                  return
+                }
+                core.setOutput('changelog', changelog)
+                core.exportVariable('CHANGELOG', changelog)
+                return
+              
+              }
+
+              const { data: { message } } = await github.rest.git.getTag({
                 owner,
                 repo,
-                tag_sha,
+                tag_sha: sha,
               });
 
               const changelog = message.trim()
