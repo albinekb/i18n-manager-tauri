@@ -1,27 +1,21 @@
+import { useSetAtom } from 'jotai/react'
 import { invoke } from '@tauri-apps/api/tauri'
 import { open } from '@tauri-apps/api/dialog'
 
-import { readDir, BaseDirectory } from '@tauri-apps/api/fs'
+import { readDir } from '@tauri-apps/api/fs'
 import { useRouter } from 'next/router'
 
-import { getRecentProjects } from '../../Home/RecentProjects'
 import { getProjectName } from '../../../lib/project'
-import uniqBy from 'lodash.uniqby'
+import { appendRecentProjectAtom } from '../atoms'
 
 export default function useOpenProject() {
   const router = useRouter()
+  const appendRecentProject = useSetAtom(appendRecentProjectAtom)
 
   async function openPath(path: string) {
     await invoke('allow_directory', { path })
     const name = await getProjectName(path)
-    const store = await import('tauri-plugin-store-api').then(
-      ({ Store }) => new Store('.cache.dat'),
-    )
-    const recent = await getRecentProjects()
-    await store.set(
-      'recent-projects',
-      uniqBy([...recent, { name, path }], 'path').slice(0, 5),
-    )
+    appendRecentProject({ path, name })
     router.push({
       pathname: '/project',
       query: { path },

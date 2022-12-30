@@ -1,7 +1,7 @@
 import React, { useEffect, Suspense } from 'react'
 
 import { FormProvider, useForm, useFormContext } from 'react-hook-form'
-import { Provider, useAtomValue, useSetAtom } from 'jotai'
+
 import {
   addedAtom,
   deletedAtom,
@@ -17,13 +17,18 @@ import {
 import { buildKeyTree } from '../../lib/keyTree'
 import { CircularProgress } from '@mui/material'
 import SuspenseProgress from '../shared/SuspenseProgress'
+import { createStore } from 'jotai/vanilla'
+import { Provider, useAtomValue, useSetAtom } from 'jotai/react'
+import { useMemo } from 'react'
 
-export const Preloader = () => {
+const Preloader = () => {
   useAtomValue(projectInfoAtom)
   useAtomValue(projectLangFiles)
   useAtomValue(projectDataAtom)
   useAtomValue(projectLanguageTreeAtom)
-  useAtomValue(keyTreeAtom)
+  useAtomValue(addedAtom)
+  useAtomValue(deletedAtom)
+  useAtomValue(projectLanguagesAtom)
 
   return null
 }
@@ -34,12 +39,23 @@ type Props = {
 }
 
 export default function ProjectContextProvider({ children, path }: Props) {
+  const store = useMemo(() => {
+    if (path) {
+      const store = createStore()
+      store.set(projectPathAtom, path)
+      return store
+    }
+    return null
+  }, [path])
+
+  if (!store) return <SuspenseProgress />
+
   return (
-    <Provider initialValues={[[projectPathAtom, path]]}>
+    <Provider store={store}>
       <Suspense fallback={<SuspenseProgress />}>
         <Preloader />
         <ProjectFormProvider>
-          <FormPreloader />
+          <FormSyncLoader />
           {children}
         </ProjectFormProvider>
       </Suspense>
@@ -47,24 +63,28 @@ export default function ProjectContextProvider({ children, path }: Props) {
   )
 }
 
-function FormPreloader() {
+function FormSyncLoader() {
   const formContext = useFormContext()
   const added = useAtomValue(addedAtom)
   const deleted = useAtomValue(deletedAtom)
   const data = useAtomValue(projectDataAtom)
   const languages = useAtomValue(projectLanguagesAtom)
+  const languageTree = useAtomValue(projectLanguageTreeAtom)
+  const isEmptyLanguageTree = '__empty' in languageTree
+
   const setKeyTree = useSetAtom(keyTreeAtom)
 
   React.useEffect(() => {
-    if (!data) return
+    if (isEmptyLanguageTree) return
     const values = formContext.getValues()
     const keyTree = buildKeyTree(languages, values)
 
     setKeyTree(keyTree)
-  }, [data, added, deleted])
+  }, [isEmptyLanguageTree, added, deleted])
 
   return null
 }
+
 function ProjectFormProvider({ children }: { children: React.ReactNode }) {
   const languageTree = useAtomValue(projectLanguageTreeAtom)
   const methods = useForm({

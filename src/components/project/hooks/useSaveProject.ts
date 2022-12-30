@@ -4,7 +4,7 @@ import { useFormContext, useFormState } from 'react-hook-form'
 import flatten from 'flat'
 import dotProp from 'dot-prop'
 import { writeFile } from '@tauri-apps/api/fs'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react'
 import {
   addedAtom,
   deletedAtom,

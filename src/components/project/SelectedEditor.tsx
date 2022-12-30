@@ -23,7 +23,7 @@ import {
   searchStringAtoms,
   selectedKeyAtom,
 } from '../app/atoms'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai/react'
 
 type Props = {}
 

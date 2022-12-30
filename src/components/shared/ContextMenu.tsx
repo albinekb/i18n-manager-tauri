@@ -26,7 +26,9 @@ import {
   DeleteForever,
 } from '@mui/icons-material'
 import { useFormContext } from 'react-hook-form'
-import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
+
+import { atom } from 'jotai/vanilla'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react'
 import {
   addedAtom,
   contextMenuAtom,
@@ -34,6 +36,7 @@ import {
   projectLanguagesAtom,
   selectKeyAtom,
 } from '../app/atoms'
+import { usePushToAtom } from '../app/hooks/usePushToAtom'
 
 const getData = (
   target,
@@ -58,16 +61,6 @@ const getData = (
   return getData(target.parentNode, lives - 1)
 }
 
-const pushToAddedAtom = atom<null, string>(null, (get, set, key) => {
-  const added = get(addedAtom)
-  set(addedAtom, [...added, key])
-})
-
-const pushToDeletedAtom = atom<null, string>(null, (get, set, key) => {
-  const deleted = get(deletedAtom)
-  set(deletedAtom, [...deleted, key])
-})
-
 export function ContextMenu({
   children,
   className,
@@ -79,8 +72,8 @@ export function ContextMenu({
 }) {
   const selectKey = useSetAtom(selectKeyAtom)
   const languages = useAtomValue(projectLanguagesAtom)
-  const pushToDeleted = useSetAtom(pushToDeletedAtom)
-  const pushToAdded = useSetAtom(pushToAddedAtom)
+  const pushToDeleted = usePushToAtom(deletedAtom)
+  const pushToAdded = usePushToAtom(addedAtom)
   const formContext = useFormContext()
   const [dialog, setDialog] = React.useState<any>(null)
   const [contextMenu, setContextMenu] = useAtom(contextMenuAtom)

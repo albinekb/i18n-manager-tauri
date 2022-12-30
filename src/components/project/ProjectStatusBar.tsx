@@ -19,7 +19,7 @@ import traverse from 'traverse'
 import useSaveProject from './hooks/useSaveProject'
 import { appWindow } from '@tauri-apps/api/window'
 import { confirm } from '@tauri-apps/api/dialog'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react'
 import {
   addedAtom,
   deletedAtom,

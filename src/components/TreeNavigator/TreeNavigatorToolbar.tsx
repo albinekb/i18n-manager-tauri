@@ -14,7 +14,7 @@ import {
   Toolbar,
   Tooltip,
 } from '@mui/material'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai/react'
 import React, { useCallback } from 'react'
 import {
   expandedAtom,

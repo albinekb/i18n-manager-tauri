@@ -40,7 +40,8 @@ import {
   selectedAtom,
   selectedKeyAtom,
 } from '../app/atoms'
-import { atom, useAtom, useAtomValue } from 'jotai'
+import { atom } from 'jotai/vanilla'
+import { useAtom, useAtomValue } from 'jotai/react'
 import { LanguageTree } from '../../lib/project'
 type Props = {}
 
@@ -191,9 +192,9 @@ const flatKeys = (
   })
 }
 
-const keysFlatAtom = atom((get) => {
-  const languageTree = get(projectLanguageTreeAtom)
-  const languages = get(projectLanguagesAtom)
+const keysFlatAtom = atom(async (get) => {
+  const languageTree = await get(projectLanguageTreeAtom)
+  const languages = await get(projectLanguagesAtom)
   if (languageTree) {
     return flatKeys(languageTree, languages)
   }

@@ -29,7 +29,7 @@ import {
   translationAtom,
   TranslationState,
 } from '../app/atoms'
-import { useAtom, useAtomValue } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai/react'
 
 type Props = {}
 

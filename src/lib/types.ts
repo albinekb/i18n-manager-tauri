@@ -25,3 +25,10 @@ export interface TranslatePayload {
 export interface TranslationError {
   error: string
 }
+
+export type JSONValue =
+  | string
+  | number
+  | boolean
+  | { [x: string]: JSONValue }
+  | Array<JSONValue>

@@ -8,26 +8,12 @@ import {
 } from '@mui/material'
 import { ChevronRight } from '@mui/icons-material'
 import useOpenProject from '../app/hooks/useOpenProject'
-
-type RecentProject = {
-  path: string
-  name: string
-}
-
-export async function getRecentProjects(): Promise<RecentProject[]> {
-  const { Store } = await import('tauri-plugin-store-api')
-  const store = new Store('.cache.dat')
-  const recent = (await store.get('recent-projects')) as RecentProject[]
-  return recent || []
-}
+import { useAtomValue } from 'jotai/react'
+import { recentProjectsAtom } from '../app/atoms'
 
 export default function RecentProjects() {
   const { openPath } = useOpenProject()
-  const [recent, setRecent] = useState<RecentProject[]>([])
-
-  useEffect(() => {
-    getRecentProjects().then(setRecent)
-  }, [])
+  const recent = useAtomValue(recentProjectsAtom)
   return (
     <List subheader={<ListSubheader>Recent</ListSubheader>}>
       {recent?.map(({ path, name }) => (

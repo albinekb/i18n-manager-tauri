@@ -1,4 +1,4 @@
-import { atom, SetStateAction } from 'jotai'
+import { atom, SetStateAction } from 'jotai/vanilla'
 
 export default function atomWithDebounce<T>(
   initialValue: T,
@@ -52,7 +52,7 @@ export default function atomWithDebounce<T>(
   )
 
   // exported atom setter to clear timeout if needed
-  const clearTimeoutAtom = atom<null, null>(null, (get, set) => {
+  const clearTimeoutAtom = atom<null, any, void>(null, (get, set) => {
     clearTimeout(get(prevTimeoutAtom))
     set(isDebouncingAtom, false)
   })

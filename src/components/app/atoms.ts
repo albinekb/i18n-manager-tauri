@@ -1,16 +1,49 @@
 import { readTextFile } from '@tauri-apps/api/fs'
-import { atom, Setter } from 'jotai'
-import { focusAtom } from 'jotai-optics'
+import { atom, Setter } from 'jotai/vanilla'
+
 import atomWithDebounce from '../../lib/atomWithDebounce'
 import { findLanguage, getSystemLocale } from '../../lib/getSystemLocale'
 import { getProjectName } from '../../lib/project'
 import { KeyTree } from '../../lib/keyTree'
+
 import {
   getLanguageTree,
   getProjectLanguageFiles,
   LanguageTree,
   LangFile,
 } from '../../lib/project'
+import {
+  atomWithTauriStorage,
+  TauriAsyncStorage,
+} from '../../lib/TauriAsyncStorage'
+import uniqBy from 'lodash.uniqby'
+
+export const cacheStorage = new TauriAsyncStorage('.cache.dat')
+
+export type RecentProject = {
+  path: string
+  name: string
+  lastOpenedAt?: Date
+}
+
+export const recentProjectsAtom = atomWithTauriStorage<RecentProject[]>(
+  'recent-projects',
+  [] as RecentProject[],
+  cacheStorage,
+)
+
+export const appendRecentProjectAtom = atom<null, [RecentProject], void>(
+  null,
+  (get, set, { name, path }) => {
+    const recent = get(recentProjectsAtom)
+    const lastOpenedAt = new Date()
+    const next = uniqBy(
+      [{ name, path, lastOpenedAt }, ...recent],
+      'path',
+    ).slice(0, 5)
+    set(recentProjectsAtom, next)
+  },
+)
 export type TranslationState = {
   fromLanguage: string | null
   toLanguages: string[]
@@ -41,11 +74,16 @@ const projectNameAtom = atom<Promise<string | null> | string>(async (get) => {
   return projectName
 })
 
-export const projectInfoAtom = atom<Promise<ProjectInfo | null>, string>(
+export const projectInfoAtom = atom<
+  Promise<ProjectInfo | null> | null | ProjectInfo,
+  [string],
+  void
+>(
   async (get) => {
     const projectPath = get(projectPathAtom)
-    const projectName = get(projectNameAtom)
-    if (!projectPath || !projectName) return null
+    if (!projectPath) return null
+    const projectName = await get(projectNameAtom)
+    if (!projectName) return null
     return {
       projectPath,
       projectName,
@@ -71,11 +109,18 @@ export const projectLangFiles = atom<Promise<LangFile[]>>(async (get) => {
 
   return files
 })
-export const projectLanguagesAtom = atom<string[]>((get) =>
-  get(projectLangFiles).map((file) => file.lang),
-)
-const derivedProjectDataAtom = atom<Promise<LanguageTree>>(async (get) => {
+export const projectLanguagesAtom = atom<Promise<string[]>>(async (get) => {
   const files = get(projectLangFiles)
+  const resolved = await Promise.resolve(files)
+  if (resolved) {
+    return files.then((files) => files.map((file) => file.lang))
+  }
+
+  return []
+})
+
+const derivedProjectDataAtom = atom<Promise<LanguageTree>>(async (get) => {
+  const files = await get(projectLangFiles)
   if (!files?.length) return {}
   const loaded: any = {}
   for (const file of files) {
@@ -88,28 +133,35 @@ const derivedProjectDataAtom = atom<Promise<LanguageTree>>(async (get) => {
 })
 
 const savedProjectDataAtom = atom<LanguageTree | null>(null)
-export const projectDataAtom = atom<LanguageTree, LanguageTree>(
+export const projectDataAtom = atom<
+  Promise<LanguageTree | null> | LanguageTree | null,
+  [LanguageTree],
+  any
+>(
   (get) => get(savedProjectDataAtom) || get(derivedProjectDataAtom),
   (get, set, data) => {
     set(savedProjectDataAtom, data)
   },
 )
 
-export const projectLanguageTreeAtom = atom<LanguageTree>((get) => {
-  const data = get(projectDataAtom)
-  const languages = get(projectLanguagesAtom)
+export const EMPTY_LANGUGAGE_TREE: LanguageTree = { __empty: 'true' }
+export const projectLanguageTreeAtom = atom<Promise<LanguageTree>>(
+  async (get) => {
+    const data = await get(projectDataAtom)
+    const languages = await get(projectLanguagesAtom)
 
-  if (!languages.length || !data) return {}
+    if (!languages.length || !data) return EMPTY_LANGUGAGE_TREE
 
-  const tree = getLanguageTree({ data, languages })
-  return tree
-})
+    const tree = getLanguageTree({ data, languages })
+    return tree
+  },
+)
 export const keyTreeAtom = atom<KeyTree[]>([])
 
 const savedTranslationStateAtom = atom<TranslationState | null>(null)
 const derivedTranslationStateAtom = atom<Promise<TranslationState>>(
   async (get) => {
-    const languages = get(projectLanguagesAtom)
+    const languages = await get(projectLanguagesAtom)
     const systemLanguage = await get(systemLocaleAtom)
 
     if (!languages?.length || !systemLanguage) return initialTranslationState
@@ -127,7 +179,8 @@ const derivedTranslationStateAtom = atom<Promise<TranslationState>>(
 )
 export const translationAtom = atom<
   Promise<TranslationState>,
-  Partial<TranslationState>
+  [Partial<TranslationState>],
+  Promise<TranslationState>
 >(
   async (get) => {
     const savedState = get(savedTranslationStateAtom)
@@ -135,10 +188,12 @@ export const translationAtom = atom<
     const derivedState = await get(derivedTranslationStateAtom)
     return derivedState
   },
-  (get, set, state) => {
-    const derivedState = get(derivedTranslationStateAtom)
+  async (get, set, state) => {
+    const derivedState = await get(derivedTranslationStateAtom)
     const savedState = get(savedTranslationStateAtom)
-    set(savedTranslationStateAtom, { ...derivedState, ...savedState, ...state })
+    const nextState = { ...derivedState, ...savedState, ...state }
+    set(savedTranslationStateAtom, nextState)
+    return nextState
   },
 )
 export const selectedAtom = atom<string | null>(null)
