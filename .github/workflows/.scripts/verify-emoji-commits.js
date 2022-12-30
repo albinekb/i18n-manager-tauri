@@ -81,6 +81,13 @@ async function collectCommits({ ref, github, context, core }) {
 }
 
 const verifyCommit = async ({ message, sha }) => {
+  if (message.startsWith('🚢')) {
+    return {
+      sha,
+      state: 'success',
+      description: 'Valid release commit',
+    }
+  }
   const { stdout, stderr, exitCode } = await execa(
     'verify-emoji-commit',
     [message],
