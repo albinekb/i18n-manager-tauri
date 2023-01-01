@@ -24,21 +24,22 @@ import {
   addedAtom,
   deletedAtom,
   projectLanguagesAtom,
-  selectedKeyAtom,
-  selectKeyAtom,
+  getSelectedKeyAtom,
+  setSelectedKeyAtom,
+  setDirtyFieldsAtom,
 } from '../../store/atoms'
+import { _store } from '../app/ProjectContext'
 type Props = {}
 
 export default function ProjectStatusBar({}: Props) {
   const languages = useAtomValue(projectLanguagesAtom)
 
-  const [deleted, setDeleted] = useAtom(deletedAtom)
-  const [added, setAdded] = useAtom(addedAtom)
+  const added = useAtomValue(addedAtom)
+  const deleted = useAtomValue(deletedAtom)
 
-  const { isDirty } = useFormState()
   const { formState, reset: resetForm } = useFormContext()
   const { saveProject, isSaving } = useSaveProject()
-
+  const isDirty = formState.isDirty
   useEffect(() => {
     const listener = appWindow.onCloseRequested(async (event) => {
       console.log(`Got error in window ${event.windowLabel}`)
@@ -118,9 +119,11 @@ export default function ProjectStatusBar({}: Props) {
             </Button>
             <Button
               onClick={() => {
-                setAdded([])
-                setDeleted([])
-                resetForm()
+                _store?.set(addedAtom, [])
+                _store?.set(deletedAtom, [])
+
+                resetForm(undefined, { keepDirty: false })
+                // _store?.set(setDirtyFieldsAtom, [])
               }}
               disabled={isSaving}
               color='error'
@@ -191,8 +194,8 @@ function DirtyList({
   keys: Set<string>
   getKey?: (node: string) => string
 }) {
-  const selected = useAtomValue(selectedKeyAtom)
-  const selectKey = useSetAtom(selectKeyAtom)
+  const selected = useAtomValue(getSelectedKeyAtom)
+  const selectKey = useSetAtom(setSelectedKeyAtom)
   const [anchorEl, setAnchorEl] = React.useState<Element | null>(null)
   const handleOpen = useCallback((e) => setAnchorEl(e.currentTarget), [])
   const handleClose = useCallback(() => setAnchorEl(null), [])

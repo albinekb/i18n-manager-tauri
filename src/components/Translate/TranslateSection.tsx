@@ -25,7 +25,7 @@ import axios from 'axios'
 import { useFormContext } from 'react-hook-form'
 import {
   projectLanguagesAtom,
-  selectedKeyAtom,
+  getSelectedKeyAtom,
   translationAtom,
   TranslationState,
 } from '../../store/atoms'
@@ -52,7 +52,7 @@ export default function TranslateSection({}: Props) {
 }
 
 function TranslationForm() {
-  const selected = useAtomValue(selectedKeyAtom)
+  const selected = useAtomValue(getSelectedKeyAtom)
   const languages = useAtomValue(projectLanguagesAtom)
   const [state, setState] = useAtom(translationAtom)
   const formContext = useFormContext()

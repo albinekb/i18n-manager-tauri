@@ -21,7 +21,7 @@ import {
   projectLanguagesAtom,
   projectLanguageTreeAtom,
   searchStringAtoms,
-  selectedKeyAtom,
+  getSelectedKeyAtom,
 } from '../../store/atoms'
 import { useAtomValue, useSetAtom } from 'jotai/react'
 
@@ -30,7 +30,7 @@ type Props = {}
 export default function SelectedEditor({}: Props) {
   const isSearching = useAtomValue(searchStringAtoms.isDebouncingAtom)
   const formContext = useFormContext()
-  const selected = useAtomValue(selectedKeyAtom)
+  const selected = useAtomValue(getSelectedKeyAtom)
   const languages = useAtomValue(projectLanguagesAtom)
   const languageTree = useAtomValue(projectLanguageTreeAtom)
   const isNode = selected && formContext.getValues(selected)
@@ -82,7 +82,7 @@ const SelectedKeyHeader = ({ selected }: { selected: string }) => {
   const setContextMenu = useSetAtom(contextMenuAtom)
 
   return (
-    <Typography variant='h5' component='div'>
+    <Typography variant='h5' component='div' key={selected}>
       {parts.map((part, index) => {
         const isLast = index === parts.length - 1
         const onClick = (event: any) => {
@@ -99,7 +99,7 @@ const SelectedKeyHeader = ({ selected }: { selected: string }) => {
           })
         }
         return (
-          <span key={part}>
+          <span key={`selected-${selected}-${part}-${index}`}>
             <span onClick={onClick} className='cursor-pointer hover:underline'>
               {part}
             </span>

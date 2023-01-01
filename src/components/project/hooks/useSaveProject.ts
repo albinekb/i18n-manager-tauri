@@ -8,27 +8,29 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai/react'
 import {
   addedAtom,
   deletedAtom,
+  getSelectedKeyAtom,
   projectDataAtom,
   projectLangFiles,
   projectLanguagesAtom,
   selectedAtom,
+  setSelectedKeyAtom,
 } from '../../../store/atoms'
+import { _store } from '../../app/ProjectContext'
 
 export default function useSaveProject() {
-  const { getValues } = useFormContext()
+  const formContext = useFormContext()
   const [isSaving, setIsSaving] = React.useState(false)
   const languages = useAtomValue(projectLanguagesAtom)
   const langFiles = useAtomValue(projectLangFiles)
 
   const setProjectData = useSetAtom(projectDataAtom)
-  const [selected, setSelected] = useAtom(selectedAtom)
   const setDeleted = useSetAtom(deletedAtom)
   const setAdded = useSetAtom(addedAtom)
 
   const saveProject = useCallback(async () => {
     setIsSaving(true)
     try {
-      const values = getValues()
+      const values = formContext.getValues()
       const files: Record<string, string> = {}
       const keys = Object.keys(flatten(values))
         .map((key) => {
@@ -55,8 +57,9 @@ export default function useSaveProject() {
         await writeFile(file.path, JSON.stringify(files[file.lang], null, 2))
       }
       setProjectData(files)
+      const selected = _store?.get(getSelectedKeyAtom)
       if (selected && !uniqueKeys.includes(selected)) {
-        setSelected(null)
+        _store?.set(setSelectedKeyAtom, null)
       }
       setDeleted([])
       setAdded([])

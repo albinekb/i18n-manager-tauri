@@ -8,6 +8,7 @@ import { Suspense } from 'react'
 import SelectedEditor from '../components/project/SelectedEditor'
 
 import TreeNavigator from '../components/project/TreeNavigator'
+import { ContextMenu } from '../components/shared/ContextMenu'
 import SuspenseProgress from '../components/shared/SuspenseProgress'
 
 const ProjectStatusBar = dynamic(
@@ -22,12 +23,7 @@ const ProjectContextProvider = dynamic(
 
 export default function Project() {
   const router = useRouter()
-  const path = router.isReady
-    ? (router.query.path as string) ||
-      (typeof window !== 'undefined'
-        ? (new URLSearchParams(window.location.search).get('path') as string)
-        : null)
-    : null
+  const path = router.isReady ? (router.query.path as string) : null
 
   if (!path) return null
 
@@ -37,6 +33,7 @@ export default function Project() {
         <div className='flex flex-row overflow-hidden flex-1 w-full'>
           <TreeNavigator />
           <Suspense fallback={<SuspenseProgress />}>
+            <ContextMenu />
             <SelectedEditor />
           </Suspense>
         </div>

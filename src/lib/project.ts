@@ -30,7 +30,13 @@ async function getProjectPackageJson(
 
 const memoizedGetProjectPackageJson = pMemoize(getProjectPackageJson)
 
-export async function getProjectName(projectPath: string): Promise<string> {
+export async function getProjectName(
+  projectPath: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  if (signal?.aborted) {
+    return Promise.reject(new DOMException('Aborted', 'AbortError'))
+  }
   const packageJson = await memoizedGetProjectPackageJson(projectPath)
   if (packageJson?.name) {
     return packageJson.name

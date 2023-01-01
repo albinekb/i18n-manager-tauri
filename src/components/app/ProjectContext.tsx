@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense } from 'react'
+import React, { useEffect, Suspense, useRef, useState } from 'react'
 
 import { FormProvider, useForm, useFormContext } from 'react-hook-form'
 
@@ -9,17 +9,18 @@ import {
   projectDataAtom,
   projectLanguagesAtom,
   projectLanguageTreeAtom,
-  projectPathAtom,
   projectInfoAtom,
   projectLangFiles,
+  setProjectPathAtom,
+  setDirtyFieldsAtom,
 } from '../../store/atoms'
 
 import { buildKeyTree } from '../../lib/keyTree'
-import { CircularProgress } from '@mui/material'
 import SuspenseProgress from '../shared/SuspenseProgress'
 import { createStore } from 'jotai/vanilla'
-import { Provider, useAtomValue, useSetAtom } from 'jotai/react'
-import { useMemo } from 'react'
+import { Provider, useAtomValue } from 'jotai/react'
+
+import traverse from 'traverse'
 
 const Preloader = () => {
   useAtomValue(projectInfoAtom)
@@ -38,25 +39,56 @@ type Props = {
   path: string
 }
 
+export let _store: ReturnType<typeof createStore> | undefined
+let _storePath: string | null = null
+// export let _store = createStore()
+
 export default function ProjectContextProvider({ children, path }: Props) {
-  const store = useMemo(() => {
-    if (path) {
-      const store = createStore()
-      store.set(projectPathAtom, path)
-      return store
+  const [isReady, setIsReady] = useState(
+    () => (_store && _storePath === path) || false,
+  )
+
+  useEffect(() => {
+    if (isReady && _store && (!_storePath || _storePath !== path)) {
+      setIsReady(false)
     }
-    return null
+    const controller = new AbortController()
+    const store = createStore()
+    store
+      .set(setProjectPathAtom, path, controller.signal)
+      .then(() => {
+        if (controller.signal.aborted) {
+          console.log('aborted')
+          return
+        }
+        _store = store
+        _storePath = path
+        setIsReady(true)
+      })
+      .catch((e) => {
+        if (e.name === 'AbortError') {
+          console.log('aborted')
+          return
+        }
+      })
+    return () => {
+      controller.abort()
+    }
   }, [path])
 
-  if (!store) return <SuspenseProgress />
+  if (!isReady) {
+    return <SuspenseProgress />
+  }
 
   return (
-    <Provider store={store}>
+    <Provider store={_store}>
       <Suspense fallback={<SuspenseProgress />}>
         <Preloader />
-        <ProjectFormProvider>
-          <FormSyncLoader />
-          {children}
+        <ProjectFormProvider key={path}>
+          <Suspense fallback={null}>
+            <FormSyncLoader />
+            {children}
+          </Suspense>
         </ProjectFormProvider>
       </Suspense>
     </Provider>
@@ -69,17 +101,48 @@ function FormSyncLoader() {
   const deleted = useAtomValue(deletedAtom)
   const languages = useAtomValue(projectLanguagesAtom)
   const languageTree = useAtomValue(projectLanguageTreeAtom)
-  const isEmptyLanguageTree = '__empty' in languageTree
+  const isEmptyLanguageTree = !languages?.length || '__empty' in languageTree
 
-  const setKeyTree = useSetAtom(keyTreeAtom)
+  useEffect(() => {
+    if (!isEmptyLanguageTree) {
+      console.log('formContext.reset')
+      formContext.reset(languageTree)
+    }
+  }, [languageTree])
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isEmptyLanguageTree) return
     const values = formContext.getValues()
     const keyTree = buildKeyTree(languages, values)
-
-    setKeyTree(keyTree)
+    _store?.set(keyTreeAtom, keyTree)
   }, [isEmptyLanguageTree, added, deleted])
+
+  useEffect(() => {
+    if (!formContext.formState.isDirty) {
+      _store?.set(setDirtyFieldsAtom, [])
+      return
+    }
+    const controller = new AbortController()
+    const fields = formContext.formState.dirtyFields
+    setTimeout(() => {
+      console.log('dirtyFields')
+      const dirty = traverse(fields).reduce(function (set, x) {
+        if (this.isLeaf && typeof x === 'boolean') {
+          const parts = this.path
+          const allExceptLast = parts.slice(0, parts.length - 1)
+
+          set.add(allExceptLast.join('.'))
+        }
+        return set
+      }, new Set<string>())
+      if (!controller.signal.aborted) {
+        _store?.set(setDirtyFieldsAtom, [...dirty])
+      }
+    }, 0)
+    return () => {
+      controller.abort()
+    }
+  }, [formContext.formState])
 
   return null
 }
@@ -89,12 +152,6 @@ function ProjectFormProvider({ children }: { children: React.ReactNode }) {
   const methods = useForm({
     defaultValues: languageTree,
   })
-
-  useEffect(() => {
-    if (languageTree) {
-      methods.reset(languageTree)
-    }
-  }, [languageTree])
 
   return <FormProvider {...methods}>{children}</FormProvider>
 }
