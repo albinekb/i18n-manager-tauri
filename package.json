@@ -13,8 +13,7 @@
     "dev": "tauri dev",
     "bump": "./scripts/bump-version.sh",
     "release": "./scripts/sync-release-branch.sh",
-    "prepare": "if [[ -z \"$CI\" ]]; then husky install; else echo \"Skipping husky in CI\"; fi",
-    "postinstall": "cd ./node_modules/jotai-cache/ && [ ! -d \"./dist\" ] && yarn && yarn compile && rm -rf ./node_modules || echo \"jotai-cache already compiled\""
+    "prepare": "if [[ -z \"$CI\" ]]; then husky install; else echo \"Skipping husky in CI\"; fi"
   },
   "dependencies": {
     "@emotion/cache": "^11.10.5",
@@ -31,7 +30,7 @@
     "flat": "^5.0.2",
     "fuse.js": "^6.6.2",
     "jotai": "^1.12.0",
-    "jotai-cache": "github:jotai-labs/jotai-cache#jotai-new-async-api",
+    "jotai-cache": "https://pkg.csb.dev/jotai-labs/jotai-cache/commit/66c1fcc8/jotai-cache",
     "lodash.uniqby": "^4.7.0",
     "minisearch": "^6.0.0",
     "next": "13",
@@ -39,10 +38,12 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.41.2",
+    "react-use": "^17.4.0",
+    "react-vtree": "^3.0.0-beta.3",
+    "react-window": "^1.8.8",
     "sort-on": "^5.2.0",
     "tauri-plugin-store-api": "github:tauri-apps/tauri-plugin-store#9bd993a",
-    "traverse": "^0.6.7",
-    "usehooks-ts": "^2.9.1"
+    "traverse": "^0.6.7"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^1.2.2",
@@ -58,5 +59,8 @@
     "semver": "^7.3.8",
     "tailwindcss": "^3.2.4",
     "typescript": "^4.9.4"
-  }
+  },
+  "browserslist": [
+    "Safari 13"
+  ]
 }

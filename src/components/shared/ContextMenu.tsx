@@ -34,9 +34,9 @@ import {
   contextMenuAtom,
   deletedAtom,
   projectLanguagesAtom,
-  selectKeyAtom,
-} from '../app/atoms'
-import { usePushToAtom } from '../app/hooks/usePushToAtom'
+  setSelectedKeyAtom,
+} from '../../store/atoms'
+import { usePushToAtom } from '../../lib/atoms/hooks/usePushToAtom'
 
 const getData = (
   target,
@@ -61,39 +61,14 @@ const getData = (
   return getData(target.parentNode, lives - 1)
 }
 
-export function ContextMenu({
-  children,
-  className,
-  style,
-}: {
-  children: React.ReactNode
-  className?: string
-  style?: React.CSSProperties
-}) {
-  const selectKey = useSetAtom(selectKeyAtom)
+export function ContextMenu() {
+  const selectKey = useSetAtom(setSelectedKeyAtom)
   const languages = useAtomValue(projectLanguagesAtom)
   const pushToDeleted = usePushToAtom(deletedAtom)
   const pushToAdded = usePushToAtom(addedAtom)
   const formContext = useFormContext()
   const [dialog, setDialog] = React.useState<any>(null)
   const [contextMenu, setContextMenu] = useAtom(contextMenuAtom)
-
-  const handleContextMenu = React.useCallback((event: React.MouseEvent) => {
-    event.preventDefault()
-    event.stopPropagation()
-    if (contextMenu !== null) {
-      setContextMenu(null)
-      return
-    }
-    const data = getData(event.target as HTMLElement)
-    if (!data) return
-    selectKey(data.id)
-    setContextMenu({
-      mouseX: event.clientX + 2,
-      mouseY: event.clientY - 6,
-      data,
-    })
-  }, [])
 
   const handleClose = React.useCallback(() => {
     setContextMenu(null)
@@ -153,11 +128,7 @@ export function ContextMenu({
   )
 
   return (
-    <div
-      onContextMenu={handleContextMenu}
-      style={{ cursor: 'context-menu', ...style }}
-      className={className}
-    >
+    <>
       {dialog && (
         <ContextDialog
           {...dialog}
@@ -170,7 +141,7 @@ export function ContextMenu({
         onClose={handleClose}
         anchorReference='anchorPosition'
         anchorPosition={
-          contextMenu !== null
+          contextMenu !== null && contextMenu.mouseX && contextMenu.mouseY
             ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
             : undefined
         }
@@ -206,8 +177,7 @@ export function ContextMenu({
           Delete
         </MenuItem>
       </Menu>
-      {children}
-    </div>
+    </>
   )
 }
 

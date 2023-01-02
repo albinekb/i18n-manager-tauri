@@ -18,10 +18,13 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai/react'
 import React, { useCallback } from 'react'
 import {
   expandedAtom,
+  foldAllAtom,
+  hasExpandedAtom,
   projectInfoAtom,
   projectLanguageTreeAtom,
   searchStringAtoms,
-} from '../app/atoms'
+  unfoldAllAtom,
+} from '../../store/atoms'
 
 type Props = {}
 
@@ -102,27 +105,9 @@ function Search() {
 }
 
 function FoldButton() {
-  const languageTree = useAtomValue(projectLanguageTreeAtom)
-  const [expanded, setExpanded] = useAtom(expandedAtom)
-  const unfoldAll = useCallback(
-    (event) => {
-      event.stopPropagation()
-      const raf = window.requestAnimationFrame(() => {
-        const keys = Object.keys(languageTree)
-        setExpanded(keys)
-      })
-      return () => window.cancelAnimationFrame(raf)
-    },
-    [languageTree],
-  )
-  const foldAll = useCallback((event) => {
-    event.stopPropagation()
-    const raf = window.requestAnimationFrame(() => {
-      setExpanded([])
-    })
-    return () => window.cancelAnimationFrame(raf)
-  }, [])
-  const hasExpanded = Boolean(expanded.length)
+  const unfoldAll = useSetAtom(unfoldAllAtom)
+  const foldAll = useSetAtom(foldAllAtom)
+  const hasExpanded = useAtomValue(hasExpandedAtom)
   const foldIcon = hasExpanded ? <UnfoldLess /> : <UnfoldMore />
   return (
     <div className='text-black'>

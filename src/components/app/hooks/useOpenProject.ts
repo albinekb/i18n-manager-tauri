@@ -6,7 +6,7 @@ import { readDir } from '@tauri-apps/api/fs'
 import { useRouter } from 'next/router'
 
 import { getProjectName } from '../../../lib/project'
-import { appendRecentProjectAtom } from '../atoms'
+import { appendRecentProjectAtom } from '../../../store/atoms'
 
 export default function useOpenProject() {
   const router = useRouter()

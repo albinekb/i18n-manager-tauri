@@ -8,25 +8,26 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai/react'
 import {
   addedAtom,
   deletedAtom,
+  getSelectedKeyAtom,
+  isSavingProjectAtom,
   projectDataAtom,
   projectLangFiles,
   projectLanguagesAtom,
   selectedAtom,
-} from '../../app/atoms'
+  setSelectedKeyAtom,
+} from '../../../store/atoms'
+import { _store } from '../../app/ProjectContext'
 
 export default function useSaveProject() {
   const { getValues } = useFormContext()
-  const [isSaving, setIsSaving] = React.useState(false)
   const languages = useAtomValue(projectLanguagesAtom)
   const langFiles = useAtomValue(projectLangFiles)
 
-  const setProjectData = useSetAtom(projectDataAtom)
-  const [selected, setSelected] = useAtom(selectedAtom)
-  const setDeleted = useSetAtom(deletedAtom)
-  const setAdded = useSetAtom(addedAtom)
-
   const saveProject = useCallback(async () => {
-    setIsSaving(true)
+    if (_store?.get(isSavingProjectAtom) !== false) {
+      throw new Error('Project is already saving')
+    }
+    _store?.set(isSavingProjectAtom, true)
     try {
       const values = getValues()
       const files: Record<string, string> = {}
@@ -54,18 +55,19 @@ export default function useSaveProject() {
       for (const file of langFiles) {
         await writeFile(file.path, JSON.stringify(files[file.lang], null, 2))
       }
-      setProjectData(files)
+      _store?.set(projectDataAtom, files)
+      const selected = _store?.get(getSelectedKeyAtom)
       if (selected && !uniqueKeys.includes(selected)) {
-        setSelected(null)
+        _store?.set(setSelectedKeyAtom, null)
       }
-      setDeleted([])
-      setAdded([])
+      _store?.set(addedAtom, [])
+      _store?.set(deletedAtom, [])
     } catch (error) {
       console.error(error)
     } finally {
-      setIsSaving(false)
+      _store?.set(isSavingProjectAtom, false)
     }
-  }, [languages])
+  }, [languages, langFiles])
 
-  return useMemo(() => ({ saveProject, isSaving }), [saveProject, isSaving])
+  return saveProject
 }

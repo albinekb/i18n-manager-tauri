@@ -17,78 +17,55 @@ import React, { useCallback, useEffect, useMemo } from 'react'
 import { useFormContext, useFormState } from 'react-hook-form'
 import traverse from 'traverse'
 import useSaveProject from './hooks/useSaveProject'
-import { appWindow } from '@tauri-apps/api/window'
-import { confirm } from '@tauri-apps/api/dialog'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react'
 import {
   addedAtom,
   deletedAtom,
   projectLanguagesAtom,
-  selectedKeyAtom,
-  selectKeyAtom,
-} from '../app/atoms'
+  getSelectedKeyAtom,
+  setSelectedKeyAtom,
+  isSavingProjectAtom,
+} from '../../store/atoms'
+import { _store } from '../app/ProjectContext'
 type Props = {}
 
-export default function ProjectStatusBar({}: Props) {
-  const languages = useAtomValue(projectLanguagesAtom)
-
-  const [deleted, setDeleted] = useAtom(deletedAtom)
-  const [added, setAdded] = useAtom(addedAtom)
-
-  const { isDirty } = useFormState()
-  const { formState, reset: resetForm } = useFormContext()
-  const { saveProject, isSaving } = useSaveProject()
-
+function useDirtyWarning(isDirty: boolean) {
   useEffect(() => {
-    const listener = appWindow.onCloseRequested(async (event) => {
-      console.log(`Got error in window ${event.windowLabel}`)
-      if (!isDirty) return
-      const confirmed = await confirm('Are you sure?')
-      if (!confirmed) {
-        // user did not confirm closing the window; let's prevent it
-        event.preventDefault()
-      }
+    if (!isDirty) return
+    let aborted = false
+    const listener = Promise.all([
+      import('@tauri-apps/api/window'),
+      import('@tauri-apps/api/dialog'),
+    ]).then(([{ appWindow }, { confirm }]) => {
+      if (aborted) return
+      return appWindow.onCloseRequested(async (event) => {
+        console.log(`Got error in window ${event.windowLabel}`)
+        const confirmed = await confirm('Are you sure?')
+        if (!confirmed) {
+          // user did not confirm closing the window; let's prevent it
+          event.preventDefault()
+        }
+      })
     })
 
     return () => {
-      listener.then((unlisten) => unlisten())
+      aborted = true
+      listener.then((unlisten) => unlisten?.())
     }
   }, [isDirty])
+}
 
-  const [dirtyFields, dirtyKeys, addedKeys, deletedKeys] = useMemo(
-    () =>
-      traverse(formState.dirtyFields).reduce(
-        function (
-          [fields, keys, addedCount, deletedCount]: [
-            Set<string>,
-            Set<string>,
-            number,
-            number,
-          ],
-          val: any,
-        ) {
-          if (deleted.includes(this.path.join('.'))) {
-            return [fields, keys, addedCount, deletedCount]
-          }
-          if (
-            !this.isLeaf &&
-            typeof val === 'object' &&
-            languages.some((lang) => val[lang] === true)
-          ) {
-            keys.add(this.path.join('.'))
-          }
+export default function ProjectStatusBar({}: Props) {
+  const added = useAtomValue(addedAtom)
+  const deleted = useAtomValue(deletedAtom)
+  const isSaving = useAtomValue(isSavingProjectAtom)
 
-          if (this.isLeaf && val === true) {
-            fields.add(this.path.join('.'))
-          }
+  const { isDirty } = useFormState()
 
-          return [fields, keys, addedCount, deletedCount]
-        },
-        [new Set(), new Set(), added.length, deleted.length],
-      ),
-    // .map((val) => val?.size || val || 0),
-    [formState, languages, added, deleted],
-  )
+  useDirtyWarning(isDirty)
+
+  const addedKeys = added.length
+  const deletedKeys = deleted.length
 
   return (
     <Toolbar
@@ -107,28 +84,8 @@ export default function ProjectStatusBar({}: Props) {
         </Typography>
         {isDirty && (
           <Stack direction='row' gap={1} alignItems='center'>
-            <Button
-              onClick={saveProject}
-              disabled={isSaving}
-              endIcon={isSaving && <CircularProgress size={16} />}
-              variant='contained'
-              size='small'
-            >
-              Save
-            </Button>
-            <Button
-              onClick={() => {
-                setAdded([])
-                setDeleted([])
-                resetForm()
-              }}
-              disabled={isSaving}
-              color='error'
-              size='small'
-              variant='outlined'
-            >
-              Reset
-            </Button>
+            <SaveButton isSaving={isSaving} />
+            <ResetButton disabled={isSaving} />
           </Stack>
         )}
         <Stack direction='row' gap={1}>
@@ -162,21 +119,97 @@ export default function ProjectStatusBar({}: Props) {
               label='Deleted keys'
             />
           ) : null}
-          <DirtyList
-            count={dirtyFields.size}
-            keys={dirtyFields}
-            label='Dirty fields'
-            getKey={(node) => node.split('.').slice(0, -1).join('.')}
-          />
-
-          <DirtyList
-            count={dirtyKeys.size}
-            keys={dirtyKeys}
-            label='Dirty keys'
-          />
+          {isDirty && <DirtyLists />}
         </Stack>
       </Stack>
     </Toolbar>
+  )
+}
+
+function DirtyLists() {
+  const deleted = useAtomValue(deletedAtom)
+  const languages = useAtomValue(projectLanguagesAtom)
+  const { isDirty, dirtyFields: formStateDirtyFields } = useFormState()
+
+  useDirtyWarning(isDirty)
+  const [dirtyFields, dirtyKeys] = useMemo(
+    (): [Set<string>, Set<string>] =>
+      traverse(formStateDirtyFields).reduce(
+        function ([fields, keys]: [Set<string>, Set<string>], val: any) {
+          if (deleted.includes(this.path.join('.'))) {
+            return [fields, keys]
+          }
+          if (
+            !this.isLeaf &&
+            typeof val === 'object' &&
+            languages.some((lang) => val[lang] === true)
+          ) {
+            keys.add(this.path.join('.'))
+          }
+
+          if (this.isLeaf && val === true) {
+            fields.add(this.path.join('.'))
+          }
+
+          return [fields, keys]
+        },
+        [new Set(), new Set()],
+      ),
+    [formStateDirtyFields, languages],
+  )
+
+  return (
+    <>
+      <DirtyList
+        count={dirtyFields.size}
+        keys={dirtyFields}
+        label='Dirty fields'
+        getKey={(node) => node.split('.').slice(0, -1).join('.')}
+      />
+
+      <DirtyList count={dirtyKeys.size} keys={dirtyKeys} label='Dirty keys' />
+    </>
+  )
+}
+
+function SaveButton({ isSaving }: { isSaving: boolean }) {
+  const saveProject = useSaveProject()
+  return useMemo(
+    () => (
+      <Button
+        onClick={saveProject}
+        disabled={isSaving}
+        endIcon={isSaving && <CircularProgress size={16} />}
+        variant='contained'
+        size='small'
+      >
+        Save
+      </Button>
+    ),
+    [isSaving, saveProject],
+  )
+}
+
+function ResetButton({ disabled }: { disabled: boolean }) {
+  const { reset } = useFormContext()
+  return useMemo(
+    () => (
+      <Button
+        onClick={() => {
+          _store?.set(addedAtom, [])
+          _store?.set(deletedAtom, [])
+
+          reset(undefined, { keepDirty: false })
+        }}
+        disabled={disabled}
+        color='error'
+        size='small'
+        variant='outlined'
+      >
+        Reset
+      </Button>
+    ),
+    [disabled, reset],
   )
 }
 
@@ -191,8 +224,8 @@ function DirtyList({
   keys: Set<string>
   getKey?: (node: string) => string
 }) {
-  const selected = useAtomValue(selectedKeyAtom)
-  const selectKey = useSetAtom(selectKeyAtom)
+  const selected = useAtomValue(getSelectedKeyAtom)
+  const selectKey = useSetAtom(setSelectedKeyAtom)
   const [anchorEl, setAnchorEl] = React.useState<Element | null>(null)
   const handleOpen = useCallback((e) => setAnchorEl(e.currentTarget), [])
   const handleClose = useCallback(() => setAnchorEl(null), [])

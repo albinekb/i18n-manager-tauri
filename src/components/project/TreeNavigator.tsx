@@ -1,509 +1,271 @@
-import React, { memo, useEffect, useMemo } from 'react'
+import React, { memo, useCallback } from 'react'
 
-import { TreeItem, TreeView } from '@mui/lab'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import { findKeys, KeyTree } from '../../lib/keyTree'
-import {
-  IconButton,
-  InputAdornment,
-  LinearProgress,
-  Stack,
-  TextField,
-  Toolbar,
-} from '@mui/material'
-import flatten from 'flat'
-import MiniSearch from 'minisearch'
-import { ContextMenu } from '../shared/ContextMenu'
-import { useController, useFormContext, useFormState } from 'react-hook-form'
-import dotProp from 'dot-prop'
-import {
-  Clear,
-  ExpandMore,
-  SearchTwoTone,
-  UnfoldLess,
-  WarningOutlined,
-} from '@mui/icons-material'
+
+import { KeyTree } from '../../lib/keyTree'
+import { IconButton, LinearProgress, Stack } from '@mui/material'
+
+import { ShortText, WarningOutlined } from '@mui/icons-material'
 import clsx from 'clsx'
-import traverse from 'traverse'
-import sortOn from 'sort-on'
+
 import StaticBadge from '../shared/StaticBadge'
 import TreeNavigatorToolbar from '../TreeNavigator/TreeNavigatorToolbar'
+import { FixedSizeTree, FixedSizeNodeData } from 'react-vtree'
+
 import {
   expandedAtom,
-  expandKeys,
-  keyTreeAtom,
-  projectLanguagesAtom,
-  projectLanguageTreeAtom,
+  getDirtyFieldsAtom,
   searchStringAtoms,
-  selectedAtom,
-  selectedKeyAtom,
-} from '../app/atoms'
-import { atom } from 'jotai/vanilla'
-import { useAtom, useAtomValue } from 'jotai/react'
-import { LanguageTree } from '../../lib/project'
-type Props = {}
+  getSelectedKeyAtom,
+  setSelectedKeyAtom,
+  toggleExpandedAtom,
+  treeRef,
+  contextMenuAtom,
+  getKeyTreeAtom,
+} from '../../store/atoms'
 
-const RenderTreeForm = memo(
-  function RenderTreeForm({
-    nodes,
-    expanded,
-    selected,
-  }: {
-    nodes: KeyTree
-    expanded: string[] | null
-    selected: string | null
-  }) {
-    const formStateDisabled =
-      Array.isArray(nodes.children) ||
-      !nodes.parent ||
-      !expanded?.includes(nodes.parent)
+import { useAtomValue } from 'jotai/react'
 
-    const { isDirty } = formStateDisabled
-      ? { isDirty: false }
-      : useFormContext().getFieldState(nodes.id)
-    // const { dirtyFields } = useFormState({
-    //   control,
-    //   name: nodes.id,
-    // })
-    // const isDirty = dotProp.get(dirtyFields, nodes.id, false)
+import { StoreType, _store } from '../app/ProjectContext'
+import { useMeasureHeight } from '../../lib/hooks/useMeasureHeight'
 
-    // console.log('dirtyFields', dirtyFields)
+const Node = ({
+  data: node,
+  isOpen,
+  style,
+}: {
+  data: NodeData
+  isOpen: boolean
+  [key: string]: any
+}) => {
+  const { id, name, isLeaf, count, isDirty, isSelected, nestingLevel, score } =
+    node
 
-    const isParent = Array.isArray(nodes.children)
-    const isSelected = selected === nodes.id
-    const count = isParent ? nodes?.children?.length : null
-    const childExpanded = useMemo(() => {
-      if (!isParent) return null
-      const filtered = expanded?.filter((key) => key.startsWith(nodes.id))
-      return filtered?.length ? filtered : null
-    }, [expanded, nodes.id])
+  const onClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isLeaf) {
+      _store?.set(setSelectedKeyAtom, id)
+    } else {
+      const cascade = e.altKey
+      _store?.set(toggleExpandedAtom, id, cascade)
+    }
+  }
 
-    return (
-      <TreeItem
-        key={nodes.id}
-        nodeId={nodes.id}
-        label={
-          <Stack
-            direction='row'
-            alignItems='center'
-            justifyContent='space-between'
-            className='h-10'
-          >
-            <span
-              className={clsx(
-                isDirty && 'font-semibold',
-                'font-weight-[inherit]',
-              )}
-              style={
-                nodes?.score
-                  ? { backgroundColor: `rgba(0,255,0,${nodes.score / 100})` }
-                  : undefined
-              }
-            >
-              {nodes.name}
-            </span>
-            {count && <StaticBadge badgeContent={count} color='primary' />}
-            {isDirty && <WarningOutlined fontSize='small' />}
-          </Stack>
-        }
-        // classes={
-        //   matches.includes(nodes.name)
-        //     ? { label: 'underline font-bold' }
-        //     : undefined
-        // }
-        data-id={nodes.id}
-        data-type={isParent ? 'parent' : 'value'}
-        endIcon={isParent ? <ExpandMoreIcon /> : undefined}
-        // className={clsx(isSelected && 'bg-gray-100')}
-        classes={
-          isSelected
-            ? { expanded: 'font-extralight', iconContainer: 'text-2xl' }
-            : {
-                focused: 'bg-transparent',
-                selected: 'bg-transparent',
-                expanded: 'font-extralight',
-                iconContainer: 'text-2xl',
-              }
-        }
+  const onContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const data = {
+      id,
+      key: id.split('.').slice(-1)[0] || id,
+      type: isLeaf ? 'value' : 'parent',
+    }
+    _store?.set(contextMenuAtom, {
+      mouseX: event.clientX + 2,
+      mouseY: event.clientY - 6,
+      data,
+    })
+  }
+  return (
+    <div style={style}>
+      <Stack
+        direction='row'
+        alignItems='center'
+        className={clsx(
+          'w-full h-full pr-2 cursor-pointer hover:bg-gray-100',
+          isSelected && 'font-bold bg-blue-100',
+        )}
+        style={{
+          paddingLeft: (nestingLevel || 0) * 18,
+        }}
+        onClick={onClick}
+        onContextMenu={onContextMenu}
       >
-        {isParent
-          ? nodes?.children?.map((node) =>
-              node ? (
-                <RenderTreeForm
-                  key={node.id}
-                  nodes={node}
-                  expanded={childExpanded}
-                  selected={selected}
-                />
-              ) : null,
-            )
-          : null}
-      </TreeItem>
-    )
-  },
-  (prevProps, nextProps) => {
-    return (
-      prevProps.nodes.id === nextProps.nodes.id &&
-      (prevProps.expanded === nextProps.expanded ||
-        prevProps.expanded?.length === nextProps.expanded?.length) &&
-      prevProps.selected === nextProps.selected
-    )
-  },
-)
-const flatKeys = (
-  tree: LanguageTree,
-  languages: string[],
-): Array<{ id: string; key: string; [key: string]: string }> => {
-  const regexps = languages.map((lang) => ({
-    lang,
-    regexp: new RegExp(`\.${lang}$`),
-  }))
-  const getKey = (key: string) => {
-    for (const { lang, regexp } of regexps) {
-      const ending = `.${lang}`
-      if (key.endsWith(ending)) {
-        return [key.replace(regexp, ''), lang]
-      }
-    }
-    return [key, null]
-  }
+        {isLeaf ? (
+          <IconButton size='small' disabled title='Value'>
+            <ShortText style={{ width: 20, height: 20 }} />
+          </IconButton>
+        ) : (
+          <IconButton
+            size='small'
+            onClick={onClick}
+            title={isOpen ? 'Collapse (⌥ to cascade)' : 'Expand (⌥ to cascade)'}
+          >
+            <ExpandMoreIcon
+              style={{ width: 20, height: 20 }}
+              className={clsx(
+                'transform transition-transform duration-300',
+                isOpen && 'rotate-180',
+              )}
+            />
+          </IconButton>
+        )}
 
-  const keysFlat = Object.entries(
-    flatten<LanguageTree, [string, any]>(tree, { delimiter: '.' }),
+        <span
+          className={clsx(isDirty && 'font-semibold', 'font-weight-[inherit]')}
+          style={
+            score
+              ? { backgroundColor: `rgba(0,255,0,${score / 100})` }
+              : undefined
+          }
+          title={id}
+        >
+          {name}
+        </span>
+        <div className='flex-grow' />
+        {count ? <StaticBadge badgeContent={count} color='primary' /> : null}
+        {isDirty && <WarningOutlined fontSize='small' />}
+      </Stack>
+    </div>
   )
-    .filter(
-      ([id, value]) => !id.includes('__leaf') && typeof value === 'string',
-    )
-    .map(([id, value]) => {
-      const [withoutLang, lang] = getKey(id)
-      return {
-        id,
-        value,
-        path: withoutLang,
-        key: withoutLang?.split('.')?.slice(-1)[0] || withoutLang,
-        lang,
-      }
-    })
-
-  const uniqueKeys = [...new Set(keysFlat.map((x) => x.path))].filter(Boolean)
-
-  return uniqueKeys.map((path: string) => {
-    const values: any = dotProp.get(tree, path)
-    const translated = languages.reduce((acc: any, lang) => {
-      const value = values?.[lang]
-      if (value) {
-        acc[lang] = value
-      }
-
-      return acc
-    }, {})
-    return {
-      id: path,
-      key: path.split('.').slice(-1)[0] || path,
-      ...translated,
-    }
-  })
 }
+export type NodeData = FixedSizeNodeData &
+  Partial<{
+    name: string
+    isLeaf: boolean
+    nestingLevel: number
+    isSelected: boolean
+    isDirty: boolean
+    count?: number
+    score?: number
+  }>
 
-const keysFlatAtom = atom(async (get) => {
-  const languageTree = await get(projectLanguageTreeAtom)
-  const languages = await get(projectLanguagesAtom)
-  if (languageTree) {
-    return flatKeys(languageTree, languages)
+// const Row = ({
+//   index,
+//   data: { component: Node, getRecordData, treeData },
+//   style,
+//   isScrolling,
+// }: PropsWithChildren<
+//   TypedListChildComponentProps<NodeData, NodePublicState<NodeData>>
+// >): ReactElement | null => {
+//   const data = getRecordData(index)
+
+//   return (
+//     <Node
+//       isScrolling={isScrolling}
+//       style={style}
+//       treeData={treeData}
+//       {...data}
+//     />
+//   )
+// }
+
+type GetNodeDataType = { data: NodeData; nestingLevel: number; node: KeyTree }
+type GetStoreValue = StoreType['get']
+const get: GetStoreValue = function (atom) {
+  if (!_store) throw new Error('Store not initialized')
+  return _store!.get(atom)
+}
+// This helper function constructs the object that will be sent back at the step
+// [2] during the treeWalker function work. Except for the mandatory `data`
+// field you can put any additional data here.
+function getNodeData(
+  node: KeyTree,
+  nestingLevel: number,
+  isDirty: boolean,
+  isSelected: boolean,
+  isOpenByDefault: boolean,
+): GetNodeDataType {
+  const isLeaf = !node?.children?.length
+  // console.log('getNodeData')
+  return {
+    data: {
+      id: node.id,
+      isOpenByDefault, // mandatory
+      name: node.name,
+      isLeaf,
+      nestingLevel,
+      isSelected,
+      isDirty,
+      count: node?.children?.length,
+    },
+    nestingLevel,
+    node,
   }
-  return []
-})
-
-export default function TreeNavigator({}: Props) {
-  const keysFlat = useAtomValue(keysFlatAtom)
-  const languageTree = useAtomValue(projectLanguageTreeAtom)
-
-  const languages = useAtomValue(projectLanguagesAtom)
-  const debouncedSearchString = useAtomValue(searchStringAtoms.currentValueAtom)
-  const searchString = useAtomValue(searchStringAtoms.debouncedValueAtom)
+}
+export default function TreeNavigator() {
   const isSearching = useAtomValue(searchStringAtoms.isDebouncingAtom)
-  const [expanded, setExpanded] = useAtom(expandedAtom)
-  const [selected, setSelected] = useAtom(selectedAtom)
-  const keyTree = useAtomValue(keyTreeAtom)
-  // console.log(keysFlat)
+  const keyTree = useAtomValue(getKeyTreeAtom)
+  const [scrollContainerRef, treeHeight] = useMeasureHeight<HTMLDivElement>()
 
-  const miniSearch = useMemo(() => {
-    return new MiniSearch({
-      fields: ['key', ...languages],
-      storeFields: ['key', ...languages],
-      // processTerm: (term) => term.toLowerCase(), // index term processing
-      // tokenize: (string) => [string], // indexing tokenizer
-      // searchOptions: {
-      //   processTerm: (term) => term.toLowerCase(), // search query processing
-      // },
-      // searchOptions: {
-      //   tokenize: (string) => [string],
-      //   // .split(/[\s-]+/) // search query tokenizer
-      // },
-    })
-  }, [languages])
+  const loading = isSearching || !keyTree.length
 
-  useEffect(() => {
-    miniSearch.removeAll()
-    miniSearch.addAll(keysFlat)
-  }, [keysFlat, miniSearch])
-
-  const searchEmpty = searchString === ''
-  useEffect(() => {
-    if (searchString === '' && expanded?.length && !selected) {
-      setExpanded([])
-    }
-  }, [searchEmpty])
-
-  // const fuse = useMemo(() => {
-  //   if (!keyTree?.length) return
-  //   const options: Fuse.IFuseOptions<KeyTree> = {
-  //     includeScore: true,
-  //     includeMatches: true,
-  //     findAllMatches: false,
-  //     shouldSort: true,
-
-  //     keys: [
-  //       'name',
-  //       'children.name',
-  //       'children.children.name',
-  //       'children.children.children.name',
-  //       'children.children.children.children.name',
-  //       'children.children.children.children.children.name',
-  //       'children.children.children.children.children.children.name',
-  //     ],
-  //   }
-
-  //   return new Fuse<KeyTree>(keyTree, options)
-  // }, [keyTree])
-
-  // useEffect(() => {
-  //   if (!debouncedSearch || !keysFlat?.length || !miniSearch) return
-
-  //   const results = miniSearch?.search(debouncedSearch, {
-  //     boost: { value: 3, key: 2 },
-  //   })
-  //   console.log('miniSearch results', results)
-
-  //   if (results?.length) {
-  //     const top = results.slice(0, 50)
-  //     setMatches(top.map((result) => result.path).filter(Boolean))
-  //     const expanded: string[] = top.reduce((expanded, result) => {
-  //       const { path, score } = result
-  //       const parent = path.split('.').slice(0, -1)
-  //       if (parent?.length) {
-  //         if (parent.length === 1) {
-  //           return [...expanded, parent[0]]
-  //         }
-  //         const next = parent.reduce((acc, curr) => {
-  //           if (acc.length) {
-  //             return [...acc, `${acc[acc.length - 1]}.${curr}`]
-  //           }
-  //           return [curr]
-  //         }, [])
-  //         return [...expanded, ...next]
-  //       } else {
-  //         return [...expanded, path]
-  //       }
-  //     }, [] as string[])
-
-  //     const unique = [...new Set(expanded)]
-
-  //     if (unique?.length) {
-  //       setExpanded(unique)
-  //     }
-  //   } else {
-  //     setMatches([])
-  //   }
-  // }, [debouncedSearch, keysFlat, miniSearch])
-
-  // useEffect(() => {
-  //   if (selected) {
-  //     const nodes = selected.split('.')
-  //     if (!nodes?.length) {
-  //       return
-  //     }
-  //     if (expanded.includes(nodes.slice(0, -1).join('.'))) {
-  //       document
-  //         .querySelector(`[data-id="${selected}"]`)
-
-  //         ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  //       return
-  //     }
-  //     if (nodes.length === 1) {
-  //       setExpanded((prev) => [...new Set([...prev, selected])])
-  //     } else {
-  //       const next = nodes.reduce((acc, curr) => {
-  //         if (acc.length) {
-  //           return [...acc, `${acc[acc.length - 1]}.${curr}`]
-  //         }
-  //         return [curr]
-  //       }, [])
-  //       setExpanded((prev) => [...new Set([...prev, ...next])])
-  //       document
-  //         .querySelector(`[data-id="${selected}"]`)
-  //         ?.scrollIntoView({ behavior: 'smooth' })
-  //     }
-  //   }
-  // }, [selected])
-
-  const results = useMemo(() => {
-    if (!debouncedSearchString || !miniSearch || searchEmpty) return null
-    return miniSearch.search(debouncedSearchString, {
-      fuzzy: 1,
-    })
-  }, [miniSearch, debouncedSearchString])
-
-  useEffect(() => {
-    if (results?.length) {
-      const [first] = results
-      setSelected(first.id)
-      setExpanded(expandKeys(results.slice(0, 10).map((result) => result.id)))
-    }
-  }, [results])
-
-  const searched = useMemo(() => {
-    if (!debouncedSearchString || !miniSearch || searchEmpty) return keyTree
-
-    // console.log('json', miniSearch.toJSON())
-
-    const obj = results?.reduce((obj: any, curr) => {
-      for (const lang of languages) {
-        const id = `${curr.id}.${lang}`
-        obj[id] = curr[lang]
+  const treeWalker = useCallback(
+    function* treeWalker() {
+      const dirtyFields = get(getDirtyFieldsAtom)
+      const selectedKey = get(getSelectedKeyAtom)
+      const expanded = get(expandedAtom)
+      // Step [1]: Define the root node of our tree. There can be one or
+      // multiple nodes.
+      for (let i = 0; i < keyTree.length; i++) {
+        const nodeId = keyTree[i].id
+        yield getNodeData(
+          keyTree[i],
+          0,
+          dirtyFields.includes(nodeId),
+          selectedKey === nodeId,
+          expanded.includes(nodeId),
+        )
       }
-      obj[`${curr.id}.score`] = curr.score
 
-      return obj
-    }, {} as any)
-    const unflattened = flatten.unflatten(obj)
-    const tree = findKeys(unflattened as any, '', languages)
-
-    return tree
-
-    // const filteredTree = traverse(keyTree).map(function () {
-    //   // const key = this.key
-    //   const node = this.node
-    //   const thisPath = this.path
-    //   const thisKey = this.key
-    //   const thisLongPath = thisPath.join('.')
-    //   const isKeyTree = typeof node === 'object' && 'id' in node
-    //   const hasChildren =
-    //     isKeyTree && 'children' in node && node.children?.length
-    //   const isLeaf = isKeyTree && !hasChildren
-    //   const nodeId = isKeyTree ? node.id : thisKey
-    //   const parent = this.parent
-    //   const parentNode =
-    //     typeof parent === 'object' && 'id' in parent ? parent : null
-    //   const name = isKeyTree ? node.name : parentNode?.name
-    //   const keyMatch = isKeyTree && results.some(({ key }) => key === name)
-    //   if (!keyMatch) {
-    //     if (isKeyTree && results.every(({ id }) => !id.startsWith(nodeId))) {
-    //       this.remove()
-    //     } else if (name && !results.some(({ key }) => key === name)) {
-    //       console.log(name)
-    //       if (isLeaf) {
-    //         this.remove()
-    //       }
-    //     }
-    //   }
-    //   // if (!paths.some((path) => path.startsWith(node.id))) {
-
-    //   //   // this.remove()
-    //   // }
-    // })
-
-    // return filteredTree
-    // const results = fuse.search(debouncedSearchString)
-    // console.log(results)
-
-    // return results
-    //   .filter((result) => result.score < 0.05)
-    //   .map((result) => result.item)
-  }, [keysFlat, keyTree, results, miniSearch])
-  // useEffect(() => {
-  //   if (!results?.length) return
-  //   const [first] = results
-  //   const [match] = first.matches
-  //   console.log(match)
-  //   return
-  //   const parent = match.value.split('.').slice(0, -1)
-  //   if (parent?.length) {
-  //     const next = parent.reduce((acc, curr) => {
-  //       if (acc.length) {
-  //         return [...acc, `${acc[acc.length - 1]}.${curr}`]
-  //       }
-  //       return [curr]
-  //     }, [])
-  //     console.log(next)
-  //     // setExpanded([...expanded, ...parent])
-  //     setExpanded(next)
-  //   } else {
-  //     setExpanded([match.value])
-  //   }
-  // }, [results])
+      while (true) {
+        // Step [2]: Get the parent component back. It will be the object
+        // the `getNodeData` function constructed, so you can read any data from it.
+        const parent: GetNodeDataType = yield
+        const children = parent?.node?.children || []
+        const childrenCount = children.length
+        for (let i = 0; i < childrenCount; i++) {
+          // Step [3]: Yielding all the children of the provided component. Then we
+          // will return for the step [2] with the first children.
+          const childId = parent.node.children![i].id
+          yield getNodeData(
+            parent.node.children![i],
+            parent.nestingLevel + 1,
+            dirtyFields.includes(childId),
+            selectedKey === childId,
+            expanded.includes(childId),
+          )
+        }
+      }
+    },
+    [keyTree],
+  )
 
   return (
-    <div className='flex flex-col w-80 overflow-hidden height-full pt-4 bg-gray-50'>
+    <div className='flex  flex-col w-80 pt-4 bg-gray-50'>
       <TreeNavigatorToolbar />
-      <ContextMenu className='flex overflow-hidden'>
-        {isSearching ? (
-          <LinearProgress variant='query' className='w-full mx-4' />
+      <div className='flex-1 select-none' ref={scrollContainerRef}>
+        {loading ? (
+          <LinearProgress variant='query' className='h-1' />
         ) : (
-          <TreeView
-            aria-label='file system navigator'
-            defaultCollapseIcon={<ExpandMoreIcon />}
-            defaultExpandIcon={<ChevronRightIcon />}
-            onNodeSelect={(e: any, nodeId: string) => {
-              const isLeaf = dotProp.get(
-                languageTree,
-                `${nodeId}.__leaf`,
-                false,
-              )
-              if (isLeaf) {
-                setSelected(nodeId)
-              }
-            }}
-            onNodeToggle={(e, nodeIds: string[]) =>
-              setExpanded(expandKeys(nodeIds))
-            }
-            expanded={expanded}
-            sx={{ flexGrow: 1, overflowY: 'auto' }}
-          >
-            {searched && (
-              <RenderTree
-                keyTree={searched}
-                expanded={expanded}
-                selected={selected}
-              />
-            )}
-          </TreeView>
+          <TreeWalkerTree height={treeHeight} treeWalker={treeWalker} />
         )}
-      </ContextMenu>
+      </div>
     </div>
   )
 }
 
-function RenderTree({
-  keyTree,
-  expanded,
-  selected,
+const TreeWalkerTree = memo(function TreeWalkerTree({
+  height,
+  treeWalker,
 }: {
-  keyTree: KeyTree[]
-  expanded: string[]
-  selected: string | null
+  height: number
+  treeWalker: () => Generator<
+    GetNodeDataType | undefined,
+    never,
+    GetNodeDataType
+  >
 }) {
   return (
-    <>
-      {keyTree?.map((tree) => (
-        <RenderTreeForm
-          key={tree.id}
-          nodes={tree}
-          expanded={expanded.filter((id) => id.startsWith(tree.id))}
-          selected={selected}
-        />
-      )) || null}
-    </>
+    <FixedSizeTree
+      ref={treeRef}
+      treeWalker={treeWalker}
+      itemSize={36}
+      // overscanCount={10}
+      height={height}
+      width='100%'
+      // rowComponent={Row}
+    >
+      {Node}
+    </FixedSizeTree>
   )
-}
+})

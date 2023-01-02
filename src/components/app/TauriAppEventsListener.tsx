@@ -2,11 +2,7 @@ import React from 'react'
 import { emit, listen } from '@tauri-apps/api/event'
 import { useRouter } from 'next/router'
 
-type Props = {
-  children: React.ReactNode
-}
-
-export default function AppEventContext({ children }: Props) {
+export default function TauriAppEventsListener() {
   const router = useRouter()
   React.useEffect(() => {
     const listener = listen('menu', ({ payload: { action } }: any) => {
@@ -23,5 +19,5 @@ export default function AppEventContext({ children }: Props) {
       listener.then((unlisten) => unlisten())
     }
   }, [])
-  return <>{children}</>
+  return null
 }
