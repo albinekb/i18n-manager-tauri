@@ -20,8 +20,8 @@ import {
   setSelectedKeyAtom,
   toggleExpandedAtom,
   treeRef,
-  contextMenuAtom,
   getKeyTreeAtom,
+  openContextMenuAtom,
 } from '../../store/atoms'
 
 import { useAtomValue } from 'jotai/react'
@@ -59,7 +59,7 @@ const Node = ({
       key: id.split('.').slice(-1)[0] || id,
       type: isLeaf ? 'value' : 'parent',
     }
-    _store?.set(contextMenuAtom, {
+    _store?.set(openContextMenuAtom, {
       mouseX: event.clientX + 2,
       mouseY: event.clientY - 6,
       data,

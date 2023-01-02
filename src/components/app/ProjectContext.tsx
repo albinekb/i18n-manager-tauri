@@ -1,6 +1,11 @@
 import React, { useEffect, Suspense, useRef, useState, useMemo } from 'react'
 
-import { FormProvider, useForm, useFormContext } from 'react-hook-form'
+import {
+  FormProvider,
+  useForm,
+  useFormContext,
+  UseFormReturn,
+} from 'react-hook-form'
 
 import {
   addedAtom,
@@ -13,6 +18,7 @@ import {
   projectLangFiles,
   setProjectPathAtom,
   setDirtyFieldsAtom,
+  deletedKeysAtom,
 } from '../../store/atoms'
 
 import { buildKeyTree } from '../../lib/keyTree'
@@ -21,6 +27,7 @@ import { createStore } from 'jotai/vanilla'
 import { Provider, useAtomValue } from 'jotai/react'
 
 import traverse from 'traverse'
+import { LanguageTree } from '../../lib/project'
 
 const Preloader = () => {
   useAtomValue(projectInfoAtom)
@@ -90,6 +97,7 @@ export default function ProjectContextProvider({ children, path }: Props) {
             <FormResetter />
             <FormKeyTreeUpdater />
             <FormDirtyUpdater />
+            <ExtractFormContext />
             {children}
           </Suspense>
         </ProjectFormProvider>
@@ -101,7 +109,7 @@ export default function ProjectContextProvider({ children, path }: Props) {
 function FormKeyTreeUpdater() {
   const formContext = useFormContext()
   const added = useAtomValue(addedAtom)
-  const deleted = useAtomValue(deletedAtom)
+  const deleted = useAtomValue(deletedKeysAtom)
   const languages = useAtomValue(projectLanguagesAtom)
   const languageTree = useAtomValue(projectLanguageTreeAtom)
   const isEmptyLanguageTree = !languages?.length || '__empty' in languageTree
@@ -164,6 +172,28 @@ function FormResetter() {
     }
   }, [languageTree])
 
+  return null
+}
+
+export let _formContext:
+  | undefined
+  | Pick<UseFormReturn<LanguageTree, any>, 'resetField' | 'setValue'> =
+  undefined
+
+function ExtractFormContext() {
+  const { resetField, setValue } = useFormContext()
+
+  useEffect(() => {
+    const update = {
+      resetField,
+      setValue,
+    }
+    if (!_formContext) {
+      _formContext = update
+    } else {
+      Object.assign(_formContext, update)
+    }
+  }, [resetField, setValue])
   return null
 }
 

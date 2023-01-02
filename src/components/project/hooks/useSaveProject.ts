@@ -61,7 +61,7 @@ export default function useSaveProject() {
         _store?.set(setSelectedKeyAtom, null)
       }
       _store?.set(addedAtom, [])
-      _store?.set(deletedAtom, [])
+      _store?.set(deletedAtom, new Map())
     } catch (error) {
       console.error(error)
     } finally {

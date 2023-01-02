@@ -22,6 +22,7 @@ import { NodeData } from '../components/project/TreeNavigator'
 import { createRef } from 'react'
 import { flatten } from 'flat'
 import dotProp from 'dot-prop'
+import { _formContext } from '../components/app/ProjectContext'
 
 export const cacheStorage = new TauriAsyncStorage('.cache.dat')
 
@@ -393,7 +394,58 @@ export const selectedAtom = atom<string | null, [string | null], void>(
   },
 )
 export const addedAtom = atom<string[]>([])
-export const deletedAtom = atom<string[]>([])
+type DeletedFieldState = {
+  type: 'parent' | 'value'
+  value: any
+  defaultValue?: any
+}
+
+export const resetProjectChangesAtom = atom<null, [], void>(
+  null,
+  (get, set) => {
+    set(addedAtom, [])
+    set(deletedAtom, new Map())
+    set(dirtyFieldsAtomValue, [])
+    set(selectedValueAtom, null)
+  },
+)
+const deletedAtom = atom<Map<string, DeletedFieldState>>(new Map())
+export const getDeletedMapAtom = atom<Map<string, DeletedFieldState>>((get) =>
+  get(deletedAtom),
+)
+export const deletedKeysAtom = atom<string[]>((get) =>
+  Array.from(get(deletedAtom).keys()),
+)
+export const deleteFieldAtom = atom<null, [string, DeletedFieldState], void>(
+  null,
+  (get, set, id, state) => {
+    const deleted = get(deletedAtom)
+    const next = new Map(deleted)
+    next.set(id, state)
+    set(deletedAtom, next)
+  },
+)
+export const restoreDeletedFieldAtom = atom<null, [string], void>(
+  null,
+  (get, set, id) => {
+    const deleted = get(deletedAtom)
+    if (deleted.has(id)) {
+      const deletedField = deleted.get(id)
+      if (deletedField) {
+        const value = deletedField.value
+        const defaultValue = deletedField.defaultValue || value
+        _formContext?.setValue(id, value)
+        _formContext?.resetField(id, {
+          defaultValue,
+        })
+        _formContext?.setValue(id, value, { shouldDirty: true })
+        const next = new Map(deleted)
+        next.delete(id)
+        set(deletedAtom, next)
+      }
+    }
+  },
+)
 const expandedAtomValue = atom<string[]>([])
 export const hasExpandedAtom = atom<boolean>(
   (get) => get(expandedAtomValue).length > 0,
@@ -524,8 +576,28 @@ export const setSelectedKeyAtom = atom(
   },
 )
 
-export const contextMenuAtom = atom<{
+type ContextMenuProps = {
   mouseX: number
   mouseY: number
   data: any
-} | null>(null)
+  open?: boolean
+}
+
+const contextMenuAtom = atom<ContextMenuProps | null>(null)
+
+export const getContextMenuAtom = atom((get) => get(contextMenuAtom))
+
+export const openContextMenuAtom = atom<
+  null,
+  [Omit<ContextMenuProps, 'open'>],
+  void
+>(null, (get, set, props) => {
+  set(contextMenuAtom, { ...props, open: true })
+})
+
+export const closeContextMenuAtom = atom<null, [], void>(null, (get, set) => {
+  const current = get(contextMenuAtom)
+  if (current) {
+    set(contextMenuAtom, { ...current, open: false })
+  }
+})
