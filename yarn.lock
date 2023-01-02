@@ -1084,9 +1084,9 @@ isarray@~1.0.0:
   resolved "https://registry.npmjs.org/isarray/-/isarray-1.0.0.tgz"
   integrity sha512-VLghIWNM6ELQzo7zwmcg0NmTVyWKYjvIeM83yjp0wRDTmUnrM678fQbcKBo6n2CJEF0szoG//ytg+TKla89ALQ==
 
-"jotai-cache@github:jotai-labs/jotai-cache#jotai-new-async-api":
+"jotai-cache@https://pkg.csb.dev/jotai-labs/jotai-cache/commit/66c1fcc8/jotai-cache":
   version "0.1.1"
-  resolved "https://codeload.github.com/jotai-labs/jotai-cache/tar.gz/66c1fcc85e8599941798b33a67367316e128eb42"
+  resolved "https://pkg.csb.dev/jotai-labs/jotai-cache/commit/66c1fcc8/jotai-cache#fd540ce406c25b014e54fe163e0ab9b4309196a5"
 
 jotai@^1.12.0:
   version "1.12.0"
