@@ -37,6 +37,8 @@ export const recentProjectsAtom = atomWithTauriStorage<RecentProject[]>(
   cacheStorage,
 )
 
+export const isSavingProjectAtom = atom(false)
+
 export const appendRecentProjectAtom = atom<null, [RecentProject], void>(
   null,
   (get, set, { name, path }) => {

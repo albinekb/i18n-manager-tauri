@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, useRef, useState } from 'react'
+import React, { useEffect, Suspense, useRef, useState, useMemo } from 'react'
 
 import { FormProvider, useForm, useFormContext } from 'react-hook-form'
 
@@ -39,6 +39,7 @@ type Props = {
   path: string
 }
 
+export type StoreType = ReturnType<typeof createStore>
 export let _store: ReturnType<typeof createStore> | undefined
 let _storePath: string | null = null
 // export let _store = createStore()
@@ -83,10 +84,12 @@ export default function ProjectContextProvider({ children, path }: Props) {
   return (
     <Provider store={_store}>
       <Suspense fallback={<SuspenseProgress />}>
-        <Preloader />
+        {/* <Preloader /> */}
         <ProjectFormProvider key={path}>
           <Suspense fallback={null}>
-            <FormSyncLoader />
+            <FormResetter />
+            <FormKeyTreeUpdater />
+            <FormDirtyUpdater />
             {children}
           </Suspense>
         </ProjectFormProvider>
@@ -95,7 +98,7 @@ export default function ProjectContextProvider({ children, path }: Props) {
   )
 }
 
-function FormSyncLoader() {
+function FormKeyTreeUpdater() {
   const formContext = useFormContext()
   const added = useAtomValue(addedAtom)
   const deleted = useAtomValue(deletedAtom)
@@ -104,19 +107,20 @@ function FormSyncLoader() {
   const isEmptyLanguageTree = !languages?.length || '__empty' in languageTree
 
   useEffect(() => {
-    if (!isEmptyLanguageTree) {
-      console.log('formContext.reset')
-      formContext.reset(languageTree)
+    if (isEmptyLanguageTree) {
+      return
     }
-  }, [languageTree])
-
-  useEffect(() => {
-    if (isEmptyLanguageTree) return
     const values = formContext.getValues()
     const keyTree = buildKeyTree(languages, values)
+
     _store?.set(keyTreeAtom, keyTree)
   }, [isEmptyLanguageTree, added, deleted])
 
+  return null
+}
+
+function FormDirtyUpdater() {
+  const formContext = useFormContext()
   useEffect(() => {
     if (!formContext.formState.isDirty) {
       _store?.set(setDirtyFieldsAtom, [])
@@ -124,7 +128,7 @@ function FormSyncLoader() {
     }
     const controller = new AbortController()
     const fields = formContext.formState.dirtyFields
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       console.log('dirtyFields')
       const dirty = traverse(fields).reduce(function (set, x) {
         if (this.isLeaf && typeof x === 'boolean') {
@@ -138,20 +142,37 @@ function FormSyncLoader() {
       if (!controller.signal.aborted) {
         _store?.set(setDirtyFieldsAtom, [...dirty])
       }
-    }, 0)
+    }, 10)
     return () => {
+      timeout && clearTimeout(timeout)
       controller.abort()
     }
   }, [formContext.formState])
 
   return null
 }
+function FormResetter() {
+  const formContext = useFormContext()
+  const languages = useAtomValue(projectLanguagesAtom)
+  const languageTree = useAtomValue(projectLanguageTreeAtom)
+  const isEmptyLanguageTree = !languages?.length || '__empty' in languageTree
+
+  useEffect(() => {
+    if (!isEmptyLanguageTree) {
+      console.log('formContext.reset')
+      formContext.reset(languageTree)
+    }
+  }, [languageTree])
+
+  return null
+}
 
 function ProjectFormProvider({ children }: { children: React.ReactNode }) {
-  const languageTree = useAtomValue(projectLanguageTreeAtom)
-  const methods = useForm({
-    defaultValues: languageTree,
-  })
+  const [options] = useState(() => ({
+    defaultValues: _store?.get(projectLanguageTreeAtom),
+  }))
+
+  const methods = useForm(options)
 
   return <FormProvider {...methods}>{children}</FormProvider>
 }

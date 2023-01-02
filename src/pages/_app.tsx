@@ -38,10 +38,10 @@ function MyApp(props: MyAppProps) {
 }
 
 // // Opt out of automatic static optimization.
-MyApp.getInitialProps = async (appContext: AppContext) => {
-  const appProps = await App.getInitialProps(appContext)
+// MyApp.getInitialProps = async (appContext: AppContext) => {
+//   const appProps = await App.getInitialProps(appContext)
 
-  return { ...appProps }
-}
+//   return { ...appProps }
+// }
 
 export default MyApp

@@ -1,36 +1,23 @@
-import React, {
-  memo,
-  ReactElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react'
+import React, { memo, useCallback } from 'react'
 
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 
 import { KeyTree } from '../../lib/keyTree'
 import { IconButton, LinearProgress, Stack } from '@mui/material'
-import { useFormContext } from 'react-hook-form'
 
 import { ShortText, WarningOutlined } from '@mui/icons-material'
 import clsx from 'clsx'
-import traverse from 'traverse'
 
 import StaticBadge from '../shared/StaticBadge'
 import TreeNavigatorToolbar from '../TreeNavigator/TreeNavigatorToolbar'
-import { FixedSizeTree, TreeWalker, FixedSizeNodeData } from 'react-vtree'
-
-import AutoSizer from 'react-virtualized-auto-sizer'
+import { FixedSizeTree, FixedSizeNodeData } from 'react-vtree'
 
 import {
   expandedAtom,
   getDirtyFieldsAtom,
-  keyTreeAtom,
   searchStringAtoms,
   getSelectedKeyAtom,
   setSelectedKeyAtom,
-  setDirtyFieldsAtom,
   toggleExpandedAtom,
   treeRef,
   contextMenuAtom,
@@ -39,9 +26,8 @@ import {
 
 import { useAtomValue } from 'jotai/react'
 
-import { _store } from '../app/ProjectContext'
-
-type Props = {}
+import { StoreType, _store } from '../app/ProjectContext'
+import { useMeasureHeight } from '../../lib/hooks/useMeasureHeight'
 
 const Node = ({
   data: node,
@@ -52,57 +38,41 @@ const Node = ({
   isOpen: boolean
   [key: string]: any
 }) => {
-  const {
-    id,
-    name,
-    isLeaf,
-    isParent,
-    count,
-    isDirty,
-    isSelected,
-    nestingLevel,
-  } = node
+  const { id, name, isLeaf, count, isDirty, isSelected, nestingLevel, score } =
+    node
 
-  const onClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      if (isLeaf) {
-        _store?.set(setSelectedKeyAtom, id)
-      } else {
-        const cascade = e.altKey
-        _store?.set(toggleExpandedAtom, id, cascade)
-      }
-    },
-    [id, isLeaf],
-  )
+  const onClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isLeaf) {
+      _store?.set(setSelectedKeyAtom, id)
+    } else {
+      const cascade = e.altKey
+      _store?.set(toggleExpandedAtom, id, cascade)
+    }
+  }
 
-  const onContextMenu = useCallback(
-    (event: React.MouseEvent) => {
-      event.preventDefault()
-      event.stopPropagation()
-      const data = {
-        id,
-        key: id.split('.').slice(-1)[0] || id,
-        type: isLeaf ? 'value' : 'parent',
-      }
-      _store?.set(contextMenuAtom, {
-        mouseX: event.clientX + 2,
-        mouseY: event.clientY - 6,
-        data,
-      })
-    },
-    [id, isLeaf],
-  )
+  const onContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const data = {
+      id,
+      key: id.split('.').slice(-1)[0] || id,
+      type: isLeaf ? 'value' : 'parent',
+    }
+    _store?.set(contextMenuAtom, {
+      mouseX: event.clientX + 2,
+      mouseY: event.clientY - 6,
+      data,
+    })
+  }
   return (
     <div style={style}>
       <Stack
         direction='row'
         alignItems='center'
         className={clsx(
-          'w-full h-full pr-2',
+          'w-full h-full pr-2 cursor-pointer hover:bg-gray-100',
           isSelected && 'font-bold bg-blue-100',
-          'hover:bg-gray-100',
-          'cursor-pointer',
         )}
         style={{
           paddingLeft: (nestingLevel || 0) * 18,
@@ -133,16 +103,16 @@ const Node = ({
         <span
           className={clsx(isDirty && 'font-semibold', 'font-weight-[inherit]')}
           style={
-            node?.score
-              ? { backgroundColor: `rgba(0,255,0,${node.score / 100})` }
+            score
+              ? { backgroundColor: `rgba(0,255,0,${score / 100})` }
               : undefined
           }
           title={id}
         >
-          {node.name}
+          {name}
         </span>
         <div className='flex-grow' />
-        {count && <StaticBadge badgeContent={count} color='primary' />}
+        {count ? <StaticBadge badgeContent={count} color='primary' /> : null}
         {isDirty && <WarningOutlined fontSize='small' />}
       </Stack>
     </div>
@@ -153,7 +123,6 @@ export type NodeData = FixedSizeNodeData &
     name: string
     isLeaf: boolean
     nestingLevel: number
-    isParent: boolean
     isSelected: boolean
     isDirty: boolean
     count?: number
@@ -181,24 +150,30 @@ export type NodeData = FixedSizeNodeData &
 // }
 
 type GetNodeDataType = { data: NodeData; nestingLevel: number; node: KeyTree }
-
+type GetStoreValue = StoreType['get']
+const get: GetStoreValue = function (atom) {
+  if (!_store) throw new Error('Store not initialized')
+  return _store!.get(atom)
+}
 // This helper function constructs the object that will be sent back at the step
 // [2] during the treeWalker function work. Except for the mandatory `data`
 // field you can put any additional data here.
-function getNodeData(node: KeyTree, nestingLevel): GetNodeDataType {
+function getNodeData(
+  node: KeyTree,
+  nestingLevel: number,
+  isDirty: boolean,
+  isSelected: boolean,
+  isOpenByDefault: boolean,
+): GetNodeDataType {
   const isLeaf = !node?.children?.length
-  const isDirty = _store?.get(getDirtyFieldsAtom)?.includes(node.id)
-  const isSelected = _store?.get(getSelectedKeyAtom) === node.id
-  console.log('getNodeData')
-
+  // console.log('getNodeData')
   return {
     data: {
       id: node.id,
-      isOpenByDefault: _store?.get(expandedAtom)?.includes(node.id) || false, // mandatory
+      isOpenByDefault, // mandatory
       name: node.name,
       isLeaf,
       nestingLevel,
-      isParent: !!node?.children?.length,
       isSelected,
       isDirty,
       count: node?.children?.length,
@@ -207,72 +182,87 @@ function getNodeData(node: KeyTree, nestingLevel): GetNodeDataType {
     node,
   }
 }
-export default function TreeNavigator({}: Props) {
+export default function TreeNavigator() {
   const isSearching = useAtomValue(searchStringAtoms.isDebouncingAtom)
-
   const keyTree = useAtomValue(getKeyTreeAtom)
+  const [scrollContainerRef, treeHeight] = useMeasureHeight<HTMLDivElement>()
+
+  const loading = isSearching || !keyTree.length
+
+  const treeWalker = useCallback(
+    function* treeWalker() {
+      const dirtyFields = get(getDirtyFieldsAtom)
+      const selectedKey = get(getSelectedKeyAtom)
+      const expanded = get(expandedAtom)
+      // Step [1]: Define the root node of our tree. There can be one or
+      // multiple nodes.
+      for (let i = 0; i < keyTree.length; i++) {
+        const nodeId = keyTree[i].id
+        yield getNodeData(
+          keyTree[i],
+          0,
+          dirtyFields.includes(nodeId),
+          selectedKey === nodeId,
+          expanded.includes(nodeId),
+        )
+      }
+
+      while (true) {
+        // Step [2]: Get the parent component back. It will be the object
+        // the `getNodeData` function constructed, so you can read any data from it.
+        const parent: GetNodeDataType = yield
+        const children = parent?.node?.children || []
+        const childrenCount = children.length
+        for (let i = 0; i < childrenCount; i++) {
+          // Step [3]: Yielding all the children of the provided component. Then we
+          // will return for the step [2] with the first children.
+          const childId = parent.node.children![i].id
+          yield getNodeData(
+            parent.node.children![i],
+            parent.nestingLevel + 1,
+            dirtyFields.includes(childId),
+            selectedKey === childId,
+            expanded.includes(childId),
+          )
+        }
+      }
+    },
+    [keyTree],
+  )
 
   return (
-    <div className='flex h-full  flex-col w-80 pt-4 bg-gray-50'>
+    <div className='flex  flex-col w-80 pt-4 bg-gray-50'>
       <TreeNavigatorToolbar />
-      <div className='flex-1'>
-        <AutoSizer>
-          {({ height, width }) =>
-            isSearching || !keyTree.length ? (
-              <LinearProgress
-                style={{ width }}
-                variant='query'
-                className='h-1'
-              />
-            ) : (
-              <TreeWalkerTree width={width} height={height} keyTree={keyTree} />
-            )
-          }
-        </AutoSizer>
+      <div className='flex-1 select-none' ref={scrollContainerRef}>
+        {loading ? (
+          <LinearProgress variant='query' className='h-1' />
+        ) : (
+          <TreeWalkerTree height={treeHeight} treeWalker={treeWalker} />
+        )}
       </div>
     </div>
   )
 }
 
 const TreeWalkerTree = memo(function TreeWalkerTree({
-  width,
   height,
-  keyTree,
+  treeWalker,
 }: {
-  width: number
   height: number
-  keyTree: KeyTree[]
+  treeWalker: () => Generator<
+    GetNodeDataType | undefined,
+    never,
+    GetNodeDataType
+  >
 }) {
-  const treeWalker = useCallback(function* treeWalker() {
-    // Step [1]: Define the root node of our tree. There can be one or
-    // multiple nodes.
-    for (let i = 0; i < keyTree.length; i++) {
-      yield getNodeData(keyTree[i], 0)
-    }
-
-    while (true) {
-      // Step [2]: Get the parent component back. It will be the object
-      // the `getNodeData` function constructed, so you can read any data from it.
-      const parent: GetNodeDataType = yield
-      const children = parent?.node?.children || []
-      const childrenCount = children.length
-      for (let i = 0; i < childrenCount; i++) {
-        // Step [3]: Yielding all the children of the provided component. Then we
-        // will return for the step [2] with the first children.
-
-        yield getNodeData(parent.node.children![i], parent.nestingLevel + 1)
-      }
-    }
-  }, [])
-
   return (
     <FixedSizeTree
       ref={treeRef}
       treeWalker={treeWalker}
       itemSize={36}
-      // overscanCount={100}
+      // overscanCount={10}
       height={height}
-      width={width}
+      width='100%'
       // rowComponent={Row}
     >
       {Node}
