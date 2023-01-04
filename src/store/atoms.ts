@@ -410,6 +410,13 @@ export const resetProjectChangesAtom = atom<null, [], void>(
   },
 )
 const deletedAtom = atom<Map<string, DeletedFieldState>>(new Map())
+export const setDeletedMapAtom = atom<
+  null,
+  [Map<string, DeletedFieldState>],
+  void
+>(null, (get, set, deleted) => {
+  set(deletedAtom, deleted)
+})
 export const getDeletedMapAtom = atom<Map<string, DeletedFieldState>>((get) =>
   get(deletedAtom),
 )

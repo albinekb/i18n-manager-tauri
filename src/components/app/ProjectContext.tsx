@@ -9,7 +9,7 @@ import {
 
 import {
   addedAtom,
-  deletedAtom,
+  // deletedAtom,
   keyTreeAtom,
   projectDataAtom,
   projectLanguagesAtom,
@@ -35,7 +35,7 @@ const Preloader = () => {
   useAtomValue(projectDataAtom)
   useAtomValue(projectLanguageTreeAtom)
   useAtomValue(addedAtom)
-  useAtomValue(deletedAtom)
+  // useAtomValue(deletedAtom)
   useAtomValue(projectLanguagesAtom)
 
   return null

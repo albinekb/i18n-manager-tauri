@@ -7,12 +7,13 @@ import { writeFile } from '@tauri-apps/api/fs'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react'
 import {
   addedAtom,
-  deletedAtom,
+  setDeletedMapAtom,
   getSelectedKeyAtom,
   isSavingProjectAtom,
   projectDataAtom,
   projectLangFiles,
   projectLanguagesAtom,
+  restoreDeletedFieldAtom,
   selectedAtom,
   setSelectedKeyAtom,
 } from '../../../store/atoms'
@@ -61,7 +62,7 @@ export default function useSaveProject() {
         _store?.set(setSelectedKeyAtom, null)
       }
       _store?.set(addedAtom, [])
-      _store?.set(deletedAtom, new Map())
+      _store?.set(setDeletedMapAtom, new Map())
     } catch (error) {
       console.error(error)
     } finally {
