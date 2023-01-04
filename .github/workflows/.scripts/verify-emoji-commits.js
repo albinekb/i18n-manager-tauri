@@ -34,6 +34,7 @@ async function collectCommits({ ref, github, context, core }) {
       commits = prCommits.map((commit) => ({
         sha: commit.sha,
         message: commit.commit.message,
+        parents: commit.parents,
       }))
     }
   }
@@ -76,7 +77,9 @@ async function collectCommits({ ref, github, context, core }) {
   }
 
   return commits.filter(
-    (commit) => !commit?.parents?.length || commit.parents.length <= 1,
+    (commit) =>
+      (!commit?.parents?.length || commit.parents.length <= 1) &&
+      !commit.message.includes('Merge branch'),
   )
 }
 
@@ -97,7 +100,14 @@ const verifyCommit = async ({ message, sha }) => {
   return {
     sha,
     state: exitCode === 0 ? 'success' : 'failure',
-    description: exitCode === 0 ? stdout : stderr,
+    description: (exitCode === 0 ? stdout : stderr)
+      .replaceAll('🎉', ':tada:')
+      .replaceAll('🚀', ':rocket:')
+      .replaceAll('🐛', ':bug:')
+      .replaceAll('🔥', ':fire:')
+      .replaceAll('🚢', ':ship:')
+      .replaceAll('🌹', ':rose:')
+      .replaceAll('💥', ':boom:'),
   }
 }
 
