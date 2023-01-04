@@ -76,14 +76,22 @@ async function collectCommits({ ref, github, context, core }) {
     throw new Error('Commits without message')
   }
 
-  return commits.filter(
-    (commit) =>
-      (!commit?.parents?.length || commit.parents.length <= 1) &&
-      !commit.message.includes('Merge branch'),
-  )
+  return commits.map((commit) => ({
+    ...commit,
+    isMerge:
+      (commit?.parents?.length && commit?.parents?.length > 1) ||
+      commit.message.includes('Merge branch'),
+  }))
 }
 
-const verifyCommit = async ({ message, sha }) => {
+const verifyCommit = async ({ message, sha, isMerge }) => {
+  if (isMerge) {
+    return {
+      sha,
+      state: 'success',
+      description: 'Merge commit',
+    }
+  }
   if (message.startsWith('🚢')) {
     return {
       sha,
@@ -91,6 +99,7 @@ const verifyCommit = async ({ message, sha }) => {
       description: 'Valid release commit',
     }
   }
+
   const { stdout, stderr, exitCode } = await execa(
     'verify-emoji-commit',
     [message],
