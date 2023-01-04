@@ -33,7 +33,6 @@ import {
   addedAtom,
   closeContextMenuAtom,
   getContextMenuAtom,
-  deletedAtom,
   projectLanguagesAtom,
   setSelectedKeyAtom,
   treeRef,
