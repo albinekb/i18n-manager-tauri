@@ -17,11 +17,12 @@ import { ClearOutlined } from '@mui/icons-material'
 import clsx from 'clsx'
 import TranslateSection from '../Translate/TranslateSection'
 import {
-  contextMenuAtom,
+  openContextMenuAtom,
   projectLanguagesAtom,
   projectLanguageTreeAtom,
   searchStringAtoms,
   getSelectedKeyAtom,
+  treeRef,
 } from '../../store/atoms'
 import { useAtomValue, useSetAtom } from 'jotai/react'
 
@@ -47,7 +48,11 @@ export default function SelectedEditor({}: Props) {
             <Typography
               sx={{ fontSize: 14 }}
               color='text.secondary'
+              className='cursor-pointer'
               gutterBottom
+              onClick={() => {
+                treeRef?.current?.scrollToItem(selected, 'center')
+              }}
             >
               Selected key
             </Typography>
@@ -79,7 +84,7 @@ export default function SelectedEditor({}: Props) {
 
 const SelectedKeyHeader = ({ selected }: { selected: string }) => {
   const parts = selected.split('.')
-  const setContextMenu = useSetAtom(contextMenuAtom)
+  const openContextMenu = useSetAtom(openContextMenuAtom)
 
   return (
     <Typography variant='h5' component='div' key={selected}>
@@ -92,7 +97,7 @@ const SelectedKeyHeader = ({ selected }: { selected: string }) => {
             key: dataId.split('.').slice(-1)[0] || dataId,
             type: isLast ? 'value' : 'parent',
           }
-          setContextMenu({
+          openContextMenu({
             mouseX: event.clientX + 2,
             mouseY: event.clientY - 6,
             data,

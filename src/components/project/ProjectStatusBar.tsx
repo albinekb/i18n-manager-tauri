@@ -4,10 +4,13 @@ import {
   Button,
   Chip,
   CircularProgress,
+  IconButton,
   List,
   ListItem,
   ListItemButton,
   ListItemIcon,
+  ListItemSecondaryAction,
+  ListItemText,
   Popover,
   Stack,
   Toolbar,
@@ -20,13 +23,19 @@ import useSaveProject from './hooks/useSaveProject'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react'
 import {
   addedAtom,
-  deletedAtom,
   projectLanguagesAtom,
   getSelectedKeyAtom,
   setSelectedKeyAtom,
   isSavingProjectAtom,
+  restoreDeletedFieldAtom,
+  deletedKeysAtom,
+  getDeletedMapAtom,
+  projectLanguageTreeAtom,
+  resetProjectChangesAtom,
 } from '../../store/atoms'
 import { _store } from '../app/ProjectContext'
+import { Unarchive as UndoIcon } from '@mui/icons-material'
+import { usePopFromAtom } from '../../lib/atoms/hooks/usePopFromAtom'
 type Props = {}
 
 function useDirtyWarning(isDirty: boolean) {
@@ -57,7 +66,7 @@ function useDirtyWarning(isDirty: boolean) {
 
 export default function ProjectStatusBar({}: Props) {
   const added = useAtomValue(addedAtom)
-  const deleted = useAtomValue(deletedAtom)
+  const deleted = useAtomValue(deletedKeysAtom)
   const isSaving = useAtomValue(isSavingProjectAtom)
 
   const { isDirty } = useFormState()
@@ -104,21 +113,7 @@ export default function ProjectStatusBar({}: Props) {
               label='Added keys'
             />
           ) : null}
-          {deletedKeys > 0 ? (
-            <Chip
-              avatar={
-                <Avatar
-                  sx={{
-                    bgcolor: 'error.main',
-                  }}
-                  className='text-white'
-                >
-                  {deletedKeys}
-                </Avatar>
-              }
-              label='Deleted keys'
-            />
-          ) : null}
+          {deletedKeys > 0 ? <DeletedKeysList /> : null}
           {isDirty && <DirtyLists />}
         </Stack>
       </Stack>
@@ -126,8 +121,82 @@ export default function ProjectStatusBar({}: Props) {
   )
 }
 
+function DeletedKeysList() {
+  const deleted = useAtomValue(deletedKeysAtom)
+  const selected = useAtomValue(getSelectedKeyAtom)
+  const selectKey = useSetAtom(setSelectedKeyAtom)
+  const [anchorEl, setAnchorEl] = React.useState<Element | null>(null)
+  const handleOpen = useCallback((e) => setAnchorEl(e.currentTarget), [])
+  const handleClose = useCallback(() => setAnchorEl(null), [])
+  const open = Boolean(anchorEl)
+
+  const count = deleted?.length
+  if (!count || count === 0) {
+    return null
+  }
+
+  return (
+    <>
+      <Popover
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center',
+        }}
+      >
+        <List>
+          {deleted.map((id) => {
+            return (
+              <ListItem
+                key={id}
+                secondaryAction={
+                  <IconButton
+                    size='small'
+                    edge='end'
+                    aria-label='undo'
+                    onClick={() => {
+                      _store?.set(restoreDeletedFieldAtom, id)
+                      handleClose()
+                    }}
+                  >
+                    <UndoIcon />
+                  </IconButton>
+                }
+              >
+                <ListItemText primary={id} />
+              </ListItem>
+            )
+          })}
+        </List>
+      </Popover>
+
+      <Chip
+        onClick={handleOpen}
+        disabled={!count}
+        avatar={
+          <Avatar
+            sx={{
+              bgcolor: 'error.main',
+            }}
+            className='text-white'
+          >
+            {count}
+          </Avatar>
+        }
+        label='Deleted keys'
+      />
+    </>
+  )
+}
+
 function DirtyLists() {
-  const deleted = useAtomValue(deletedAtom)
+  const deleted = useAtomValue(getDeletedMapAtom)
   const languages = useAtomValue(projectLanguagesAtom)
   const { isDirty, dirtyFields: formStateDirtyFields } = useFormState()
 
@@ -136,7 +205,7 @@ function DirtyLists() {
     (): [Set<string>, Set<string>] =>
       traverse(formStateDirtyFields).reduce(
         function ([fields, keys]: [Set<string>, Set<string>], val: any) {
-          if (deleted.includes(this.path.join('.'))) {
+          if (deleted.has(this.path.join('.'))) {
             return [fields, keys]
           }
           if (
@@ -196,10 +265,8 @@ function ResetButton({ disabled }: { disabled: boolean }) {
     () => (
       <Button
         onClick={() => {
-          _store?.set(addedAtom, [])
-          _store?.set(deletedAtom, [])
-
-          reset(undefined, { keepDirty: false })
+          reset(_store?.get(projectLanguageTreeAtom), { keepDirty: false })
+          _store?.set(resetProjectChangesAtom)
         }}
         disabled={disabled}
         color='error'

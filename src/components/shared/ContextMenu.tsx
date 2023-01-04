@@ -31,12 +31,18 @@ import { atom } from 'jotai/vanilla'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai/react'
 import {
   addedAtom,
-  contextMenuAtom,
-  deletedAtom,
+  closeContextMenuAtom,
+  getContextMenuAtom,
   projectLanguagesAtom,
   setSelectedKeyAtom,
+  treeRef,
+  projectLanguageTreeAtom,
+  deleteFieldAtom,
 } from '../../store/atoms'
 import { usePushToAtom } from '../../lib/atoms/hooks/usePushToAtom'
+import { usePrevious } from 'react-use'
+import dotProp from 'dot-prop'
+import { _store } from '../app/ProjectContext'
 
 const getData = (
   target,
@@ -64,14 +70,15 @@ const getData = (
 export function ContextMenu() {
   const selectKey = useSetAtom(setSelectedKeyAtom)
   const languages = useAtomValue(projectLanguagesAtom)
-  const pushToDeleted = usePushToAtom(deletedAtom)
+
   const pushToAdded = usePushToAtom(addedAtom)
   const formContext = useFormContext()
   const [dialog, setDialog] = React.useState<any>(null)
-  const [contextMenu, setContextMenu] = useAtom(contextMenuAtom)
+  const contextMenu = useAtomValue(getContextMenuAtom)
+  const closeContextMenu = useSetAtom(closeContextMenuAtom)
 
   const handleClose = React.useCallback(() => {
-    setContextMenu(null)
+    closeContextMenu()
   }, [])
   const closeDialog = React.useCallback(() => {
     setDialog(null)
@@ -80,26 +87,36 @@ export function ContextMenu() {
   const handleNew = React.useCallback(() => {
     console.log('new', contextMenu?.data)
     const data = { ...contextMenu?.data }
-    handleClose()
+    closeContextMenu()
     setDialog({
       data,
       action: 'new',
     })
   }, [contextMenu?.data])
 
-  const { resetField, setValue } = formContext
+  const { resetField, setValue, getValues, getFieldState } = formContext
   const dataId = contextMenu?.data?.id || dialog?.data?.id
 
   const handleDelete = React.useCallback(() => {
+    const value = getValues(dataId)
+    const { isDirty } = getFieldState(dataId)
+    const defaultValue = isDirty
+      ? dotProp.get(_store?.get(projectLanguageTreeAtom), dataId)
+      : null
+
     resetField(dataId, {
       defaultValue: undefined,
     })
     setValue(dataId, undefined, {
       shouldDirty: true,
     })
-    pushToDeleted(dataId)
+    _store?.set(deleteFieldAtom, dataId, {
+      value,
+      defaultValue,
+      type: contextMenu?.data?.type as 'parent' | 'value',
+    })
 
-    handleClose()
+    closeContextMenu()
   }, [dataId])
 
   const submit = React.useCallback(
@@ -127,17 +144,18 @@ export function ContextMenu() {
     [languages],
   )
 
+  const contextMenuOpen = contextMenu ? contextMenu.open !== false : false
+  const isLeaf = contextMenu?.data?.type !== 'parent'
   return (
     <>
-      {dialog && (
-        <ContextDialog
-          {...dialog}
-          onClose={() => setDialog(null)}
-          onSubmit={submit}
-        />
-      )}
+      <ContextDialog
+        data={dialog?.data}
+        open={!!dialog}
+        onClose={() => setDialog(null)}
+        onSubmit={submit}
+      />
       <Menu
-        open={contextMenu !== null}
+        open={contextMenuOpen}
         onClose={handleClose}
         anchorReference='anchorPosition'
         anchorPosition={
@@ -146,18 +164,29 @@ export function ContextMenu() {
             : undefined
         }
         MenuListProps={{
-          subheader: <ListSubheader>{contextMenu?.data?.key}</ListSubheader>,
+          subheader: (
+            <ListSubheader
+              className='cursor-pointer'
+              onClick={() => {
+                treeRef?.current?.scrollToItem(contextMenu?.data?.id, 'center')
+              }}
+            >
+              {contextMenu?.data?.key}
+            </ListSubheader>
+          ),
         }}
       >
-        <MenuItem
-          onClick={handleNew}
-          disabled={contextMenu?.data?.type !== 'parent'}
-        >
-          <ListItemIcon>
-            <AddCircleOutline fontSize='small' />
-          </ListItemIcon>
-          New
-        </MenuItem>
+        {!isLeaf && (
+          <MenuItem
+            onClick={handleNew}
+            disabled={contextMenu?.data?.type !== 'parent'}
+          >
+            <ListItemIcon>
+              <AddCircleOutline fontSize='small' />
+            </ListItemIcon>
+            New
+          </MenuItem>
+        )}
         <MenuItem onClick={handleClose}>
           <ListItemIcon>
             <ContentCopy fontSize='small' />
@@ -181,7 +210,7 @@ export function ContextMenu() {
   )
 }
 
-function ContextDialog({ data, onClose, onSubmit }) {
+function ContextDialog({ data, open, onClose, onSubmit }) {
   const [type, setType] = React.useState('value')
   const [value, setValue] = React.useState('')
 
@@ -209,7 +238,7 @@ function ContextDialog({ data, onClose, onSubmit }) {
 
   return (
     <Dialog
-      open={true}
+      open={open}
       onClose={onClose}
       disableAutoFocus
       disableEnforceFocus
